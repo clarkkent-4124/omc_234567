@@ -76,4 +76,7 @@ export const api = {
   getMasterPointStatus: (params = {}) => get('/master/point-status',       params),
   createPointStatus:    (body)        => post('/master/point-status',      body),
   updatePointStatus:    (id, body)    => put(`/master/point-status/${id}`, body),
+
+  // Import Excel
+  importPrtspl:         (rows)        => post('/import/prtspl',            { rows }),
 };

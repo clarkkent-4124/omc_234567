@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import * as XLSX from 'xlsx';
 import { api } from '../services/api';
 
 // ════════════════════════════════════════════════════════════════
@@ -1130,6 +1131,152 @@ function PengaturanTab({ user }) {
 }
 
 // ════════════════════════════════════════════════════════════════
+// UPLOAD TAB
+// ════════════════════════════════════════════════════════════════
+function UploadTab() {
+  const [rows,      setRows]      = useState([]);
+  const [fileName,  setFileName]  = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [result,    setResult]    = useState(null);
+  const [error,     setError]     = useState('');
+
+  function toMySQLDatetime(d) {
+    if (!d) return null;
+    if (d instanceof Date) {
+      const p = n => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+    }
+    return String(d);
+  }
+
+  function handleFile(e) {
+    const f = e.target.files[0];
+    if (!f) return;
+    setFileName(f.name); setResult(null); setError('');
+    const reader = new FileReader();
+    reader.onload = evt => {
+      try {
+        const wb   = XLSX.read(evt.target.result, { type: 'array', cellDates: true });
+        const ws   = wb.Sheets[wb.SheetNames[0]];
+        // range: 1 → skip baris header (A1=TIME, B1=DESC)
+        const data = XLSX.utils.sheet_to_json(ws, { header: ['TIME', 'DESC'], range: 1 });
+        const clean = data.filter(r => r.TIME && r.DESC).map(r => ({
+          TIME: toMySQLDatetime(r.TIME),
+          DESC: String(r.DESC),
+        }));
+        setRows(clean);
+        if (clean.length === 0) setError('Tidak ada baris valid. Pastikan kolom A=TIME, B=DESC, baris 1 adalah header.');
+      } catch (err) {
+        setError('Gagal membaca file: ' + err.message);
+      }
+    };
+    reader.readAsArrayBuffer(f);
+  }
+
+  async function handleUpload() {
+    if (rows.length === 0 || uploading) return;
+    setUploading(true); setError(''); setResult(null);
+    try {
+      const res = await api.importPrtspl(rows);
+      setResult(res);
+      setRows([]); setFileName('');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
+        {/* Header */}
+        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg, #22c55e, #16a34a)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+          </div>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Import Data SCADA</div>
+            <div style={{ fontSize: 10, color: 'var(--dim)' }}>Excel .xlsx — kolom A: TIME, kolom B: DESC (baris 1 = header)</div>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Format hint */}
+          <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', fontSize: 11, color: 'var(--muted)', lineHeight: 1.8 }}>
+            <div style={{ fontWeight: 700, marginBottom: 4, color: 'var(--text)' }}>Format Excel:</div>
+            <div><code style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--accent)' }}>A1</code> → TIME &nbsp;|&nbsp; <code style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--accent)' }}>B1</code> → DESC</div>
+            <div><code style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--dim)' }}>A2</code> → 2026-04-01 08:00:00</div>
+            <div><code style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--dim)' }}>B2</code> → GI-GI SRATEN.SF GN1.OC.REC1.R.App</div>
+          </div>
+
+          {/* File input */}
+          <label style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '10px 14px', borderRadius: 10,
+            border: '2px dashed var(--border)', cursor: 'pointer',
+            background: 'var(--bg)', transition: 'border-color 0.2s',
+          }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+            </svg>
+            <span style={{ fontSize: 12, color: fileName ? 'var(--text)' : 'var(--dim)', fontWeight: fileName ? 600 : 400 }}>
+              {fileName || 'Pilih file .xlsx / .xls'}
+            </span>
+            <input type="file" accept=".xlsx,.xls" onChange={handleFile} style={{ display: 'none' }} />
+          </label>
+
+          {/* Row count */}
+          {rows.length > 0 && (
+            <div style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#22c55e', fontWeight: 600 }}>
+              {rows.length.toLocaleString('id-ID')} baris valid siap diimport
+            </div>
+          )}
+
+          {/* Error */}
+          {error && (
+            <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#ef4444' }}>
+              {error}
+            </div>
+          )}
+
+          {/* Result */}
+          {result && (
+            <div style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#22c55e' }}>
+              ✓ Berhasil: <strong>{result.inserted.toLocaleString('id-ID')}</strong> baris &nbsp;·&nbsp; Dilewati: <strong>{result.skipped}</strong> baris
+            </div>
+          )}
+
+          {/* Submit */}
+          <button
+            onClick={handleUpload}
+            disabled={rows.length === 0 || uploading}
+            style={{
+              padding: '11px 0', borderRadius: 10, border: 'none',
+              background: rows.length === 0 ? 'var(--border)' : 'linear-gradient(135deg, #22c55e, #16a34a)',
+              color: rows.length === 0 ? 'var(--dim)' : '#fff',
+              fontSize: 13, fontWeight: 700,
+              cursor: rows.length === 0 || uploading ? 'not-allowed' : 'pointer',
+              fontFamily: 'IBM Plex Sans, sans-serif',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              opacity: uploading ? 0.7 : 1,
+            }}
+          >
+            {uploading
+              ? <><span className="spinner" style={{ borderTopColor: '#fff', borderColor: 'rgba(255,255,255,0.3)' }} />Mengimport...</>
+              : `Import${rows.length > 0 ? ` ${rows.length.toLocaleString('id-ID')} Baris` : ''}`
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════
 // MAIN — AdminPage
 // ════════════════════════════════════════════════════════════════
 export default function AdminPage({ user }) {
@@ -1137,6 +1284,7 @@ export default function AdminPage({ user }) {
 
   const TABS = [
     { key: 'pengaturan', label: 'Pengaturan' },
+    { key: 'upload',     label: 'Upload' },
     { key: 'master',     label: 'Master Data' },
   ];
 
@@ -1178,6 +1326,7 @@ export default function AdminPage({ user }) {
 
       {/* Tab content */}
       {activeTab === 'pengaturan' && <PengaturanTab user={user} />}
+      {activeTab === 'upload'     && <UploadTab />}
       {activeTab === 'master'     && <MasterPointStatus />}
 
     </div>

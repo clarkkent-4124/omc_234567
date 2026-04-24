@@ -822,6 +822,51 @@ app.put('/api/master/point-status/:id', async (req, res) => {
 });
 
 // ════════════════════════════════════════════════════════════════
+// IMPORT EXCEL — POST /api/import/prtspl
+// ════════════════════════════════════════════════════════════════
+app.post('/api/import/prtspl', async (req, res) => {
+  try {
+    const { rows } = req.body;
+    if (!Array.isArray(rows) || rows.length === 0)
+      return res.status(400).json({ error: 'Data kosong.' });
+
+    const { parseDesc } = require('./sync');
+
+    // Gunakan PKEY negatif agar tidak tabrakan dengan data SQL Server (selalu positif)
+    const [[{ minPkey }]] = await db.query('SELECT COALESCE(MIN(PKEY), 0) AS minPkey FROM sync_prtspl');
+    let pkey = Math.min(0, minPkey) - 1;
+
+    let inserted = 0, skipped = 0;
+
+    for (const row of rows) {
+      if (!row.TIME || !row.DESC) { skipped++; continue; }
+      const parsed = parseDesc(String(row.DESC));
+      if (!parsed.KESIMPULAN) { skipped++; continue; }
+
+      try {
+        await db.query(
+          `INSERT IGNORE INTO sync_prtspl
+             (PKEY, TIME, \`DESC\`, JENIS, GI, SUMBER_FEEDER, FEEDER_MURNI,
+              KEYPOINT, INDIKASI, RELAY, PHASE, KESIMPULAN, POINT_KEY)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            pkey--, row.TIME, row.DESC,
+            parsed.JENIS, parsed.GI, parsed.SUMBER_FEEDER, parsed.FEEDER_MURNI,
+            parsed.KEYPOINT, parsed.INDIKASI, parsed.RELAY, parsed.PHASE,
+            parsed.KESIMPULAN, parsed.POINT_KEY,
+          ]
+        );
+        inserted++;
+      } catch { skipped++; }
+    }
+
+    res.json({ success: true, inserted, skipped });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ════════════════════════════════════════════════════════════════
 // START
 // ════════════════════════════════════════════════════════════════
 app.listen(PORT, () => {
