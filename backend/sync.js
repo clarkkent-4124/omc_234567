@@ -128,87 +128,92 @@ async function loadInterval() {
 }
 
 // ── Satu siklus sinkronisasi ──────────────────────────────────────
+// Loop sampai tidak ada sisa — supaya burst data tidak tertunda siklus berikutnya
+const BATCH_SIZE = 500;
+
 async function runJob() {
   if (state.jobRunning) return;
   state.jobRunning = true;
 
+  let totalSyncedThisRun = 0;
+
   try {
-    // 1. Tentukan PKEY terakhir yang sudah di-sync
-    const [[{ lastPkey }]] = await db.query(
-      'SELECT COALESCE(MAX(PKEY), 0) AS lastPkey FROM sync_prtspl'
-    );
+    const mssql = await getMssql();
 
-    // 2. Ambil batch berikutnya dari SQL Server (max 500 baris per run)
-    const mssql  = await getMssql();
-    const result = await mssql.request()
-      .input('lastPkey', lastPkey)
-      .query(`
-        SELECT TOP 500
-          PKEY, TIME, [DESC]
-        FROM prtspl
-        WHERE PKEY > @lastPkey
-        ORDER BY PKEY ASC
-      `);
+    // Loop: terus ambil batch sampai SQL Server tidak punya sisa
+    while (true) {
+      // Baca titik terakhir dari MySQL setiap iterasi
+      // supaya akurat walaupun ada insert dari proses lain
+      const [[{ lastPkey }]] = await db.query(
+        'SELECT COALESCE(MAX(PKEY), 0) AS lastPkey FROM sync_prtspl'
+      );
 
-    const rows = result.recordset;
+      const result = await mssql.request()
+        .input('lastPkey', lastPkey)
+        .query(`
+          SELECT TOP ${BATCH_SIZE}
+            PKEY, TIME, [DESC]
+          FROM prtspl
+          WHERE PKEY > @lastPkey
+          ORDER BY PKEY ASC
+        `);
 
-    if (rows.length === 0) {
-      state.lastRun  = new Date();
-      state.lastSynced = 0;
-      state.error    = null;
-      state.jobRunning = false;
-      return;
-    }
+      const rows = result.recordset;
 
-    // 3. Proses & insert ke MySQL
-    let synced = 0;
+      // Tidak ada sisa → selesai
+      if (rows.length === 0) break;
 
-    for (const row of rows) {
-      const parsed = parseDesc(row.DESC);
+      const first = rows[0].PKEY;
+      const last  = rows[rows.length - 1].PKEY;
+      let   synced = 0;
 
-      // Baris yang bukan GI/KP Pickup — lewati (tidak perlu disimpan)
-      if (!parsed) continue;
+      for (const row of rows) {
+        const parsed = parseDesc(row.DESC);
 
-      const id_up3 = await lookupUp3(parsed);
+        // Baris yang bukan GI/KP Pickup — lewati (tidak perlu disimpan)
+        if (!parsed) continue;
 
-      try {
-        await db.query(
-          `INSERT IGNORE INTO sync_prtspl
-             (PKEY, TIME, \`DESC\`,
-              JENIS, GI, SUMBER_FEEDER, FEEDER_MURNI, KEYPOINT,
-              INDIKASI, RELAY, PHASE,
-              KESIMPULAN, POINT_KEY, ID_UP3)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            row.PKEY, row.TIME, row.DESC,
-            parsed.JENIS, parsed.GI, parsed.SUMBER_FEEDER,
-            parsed.FEEDER_MURNI, parsed.KEYPOINT,
-            parsed.INDIKASI, parsed.RELAY, parsed.PHASE,
-            parsed.KESIMPULAN, parsed.POINT_KEY, id_up3,
-          ]
-        );
-        synced++;
-      } catch (insertErr) {
-        // Unlikely karena INSERT IGNORE, tapi log saja jika terjadi
-        console.error(`[Sync] Insert error PKEY=${row.PKEY}:`, insertErr.message);
+        const id_up3 = await lookupUp3(parsed);
+
+        try {
+          await db.query(
+            `INSERT IGNORE INTO sync_prtspl
+               (PKEY, TIME, \`DESC\`,
+                JENIS, GI, SUMBER_FEEDER, FEEDER_MURNI, KEYPOINT,
+                INDIKASI, RELAY, PHASE,
+                KESIMPULAN, POINT_KEY, ID_UP3)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              row.PKEY, row.TIME, row.DESC,
+              parsed.JENIS, parsed.GI, parsed.SUMBER_FEEDER,
+              parsed.FEEDER_MURNI, parsed.KEYPOINT,
+              parsed.INDIKASI, parsed.RELAY, parsed.PHASE,
+              parsed.KESIMPULAN, parsed.POINT_KEY, id_up3,
+            ]
+          );
+          synced++;
+        } catch (insertErr) {
+          console.error(`[Sync] Insert error PKEY=${row.PKEY}:`, insertErr.message);
+        }
       }
-    }
 
-    const first = rows[0].PKEY;
-    const last  = rows[rows.length - 1].PKEY;
+      totalSyncedThisRun += synced;
+      state.lastPkey = last;
+
+      if (synced > 0) {
+        console.log(`[Sync] ✚ ${synced} baris (PKEY ${first}–${last})`);
+      } else {
+        console.log(`[Sync] ○ ${rows.length} baris dilewati (bukan GI/KP), PKEY ${first}–${last}`);
+      }
+
+      // Batch < BATCH_SIZE → sudah habis, tidak perlu loop lagi
+      if (rows.length < BATCH_SIZE) break;
+    }
 
     state.lastRun     = new Date();
-    state.lastSynced  = synced;
-    state.totalSynced += synced;
-    state.lastPkey    = last;
+    state.lastSynced  = totalSyncedThisRun;
+    state.totalSynced += totalSyncedThisRun;
     state.error       = null;
-
-    if (synced > 0) {
-      console.log(`[Sync] ✚ ${synced} baris (PKEY ${first}–${last})`);
-    } else {
-      // Semua baris bukan GI/KP — PKEY tetap maju agar tidak di-fetch ulang
-      console.log(`[Sync] ○ ${rows.length} baris dilewati (bukan GI/KP), PKEY ${first}–${last}`);
-    }
 
   } catch (err) {
     state.error   = err.message;

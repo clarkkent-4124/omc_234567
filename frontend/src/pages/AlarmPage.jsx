@@ -233,7 +233,7 @@ function TabLive({ user, onRefresh }) {
                   )}
                   <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{alarm.path1_text || '—'}</span>
                 </div>
-                <div style={{ fontSize: 10, color: 'var(--dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{alarm.point_text || alarm.point_name}</div>
+                <div style={{ fontSize: 10, color: 'var(--dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{alarm.point_text || '—'}</div>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div className="font-mono" style={{ fontSize: 11, color: slaState === 'breach' ? '#ef4444' : slaState === 'warning' ? '#ca8a04' : 'var(--accent)', fontWeight: 600 }}>{formatTime(alarm.datum_2)}</div>
@@ -356,7 +356,7 @@ function TabAcked({ user, refreshKey, kesimpulan }) {
                   <KBadge value={alarm.kesimpulan} />
                   <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{alarm.path1_text || '—'}</span>
                 </div>
-                <div style={{ fontSize: 10, color: 'var(--dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{alarm.point_text || alarm.point_name}</div>
+                <div style={{ fontSize: 10, color: 'var(--dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{alarm.point_text || '—'}</div>
                 {alarm.keterangan && (
                   <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontStyle: 'italic' }}>
                     {alarm.keterangan}

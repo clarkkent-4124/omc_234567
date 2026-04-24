@@ -63,7 +63,7 @@ export default function AlarmDetail({ initialFilter, onBack, showBackButton = tr
       if (selectedGI !== 'Semua GI') params.gi = selectedGI;
       if (search) params.search = search;
 
-      const res = await api.getAlarms(params);
+      const res = await api.getAlarmHistory(params);
       setAlarms(res.data || []);
       setTotal(res.total || 0);
       setTotalPages(res.totalPages || 1);
@@ -94,17 +94,18 @@ export default function AlarmDetail({ initialFilter, onBack, showBackButton = tr
       if (selectedGI !== 'Semua GI') params.gi = selectedGI;
       if (search) params.search = search;
 
-      const res = await api.getAlarms(params);
+      const res = await api.getAlarmHistory(params);
       const rows = (res.data || []).map((a, i) => ({
         'No':          i + 1,
-        'Waktu Masuk': a.datum_1 ? new Date(a.datum_1).toLocaleString('id-ID') : '-',
-        'Waktu Clear': a.datum_2 ? new Date(a.datum_2).toLocaleString('id-ID') : '-',
+        'Waktu Alarm': a.datum_2 ? new Date(a.datum_2).toLocaleString('id-ID') : '-',
+        'Waktu Ack':   a.ack_at  ? new Date(a.ack_at).toLocaleString('id-ID')  : '-',
         'Status':      a.status,
         'Jenis':       a.jenis,
-        'GI':          a.path1_text || '-',
-        'Feeder':      a.path3_text || '-',
-        'Point':       a.point_name || '-',
+        'GI / Feeder': a.path1_text || '-',
+        'Indikasi':    a.point_text || '-',
+        'POINT_KEY':   a.POINT_KEY  || '-',
         'Kesimpulan':  a.kesimpulan || '-',
+        'Keterangan':  a.keterangan || '-',
       }));
 
       const ws = XLSX.utils.json_to_sheet(rows);
@@ -342,7 +343,7 @@ export default function AlarmDetail({ initialFilter, onBack, showBackButton = tr
                 {String(rowNum).padStart(3, '0')}
               </span>
               <span className="font-mono" style={{ fontSize: 10, color: 'var(--muted)' }}>
-                {formatDateTime(alarm.datum_1)}
+                {formatDateTime(alarm.datum_2)}
               </span>
               <span style={{
                 background: s.bgVar, color: s.colorVar,
@@ -358,7 +359,7 @@ export default function AlarmDetail({ initialFilter, onBack, showBackButton = tr
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
                   <span style={{ fontSize: 10, color: 'var(--dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {alarm.path3_text || alarm.point_text}
+                    {alarm.point_text || '—'}
                   </span>
                   {alarm.status === 'ACTIVE'
                     ? <div className="pulse-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--pickup)', flexShrink: 0 }} />

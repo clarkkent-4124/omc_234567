@@ -25,29 +25,28 @@ CREATE TABLE IF NOT EXISTS sync_prtspl (
   INDEX idx_kesimpulan  (KESIMPULAN)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- ── 2. alarm_active: rename point_his_id → pkey, point_number → point_key ──
---    Jalankan hanya jika kolom lama masih ada
+-- ── 2. alarm_active: rename point_number → point_key ────────────
+--    (pkey sudah ada, point_his_id tidak ada — skip rename itu)
 ALTER TABLE alarm_active
-  CHANGE COLUMN point_his_id  pkey       INT          NOT NULL,
-  CHANGE COLUMN point_number  point_key  VARCHAR(255) NOT NULL;
+  CHANGE COLUMN point_number point_key VARCHAR(255) NOT NULL;
 
 -- Hapus UNIQUE lama (point_number), tambah UNIQUE baru (point_key)
 ALTER TABLE alarm_active
-  DROP INDEX IF EXISTS point_number,
-  ADD  UNIQUE KEY uq_alarm_active_point_key (point_key);
+  DROP INDEX point_number;
 
--- ── 3. alarm_ack: rename point_his_id → pkey, tambah kolom jika belum ada ──
-ALTER TABLE alarm_ack
-  CHANGE COLUMN point_his_id  pkey  INT NOT NULL;
+ALTER TABLE alarm_active
+  ADD UNIQUE KEY uq_alarm_active_point_key (point_key);
 
+-- ── 3. alarm_ack: tambah kolom jika belum ada ────────────────────
+--    (pkey sudah ada atau sesuaikan nama kolom yang ada di tabelmu)
 ALTER TABLE alarm_ack
   ADD COLUMN IF NOT EXISTS kesimpulan VARCHAR(10) NULL  AFTER pkey,
   ADD COLUMN IF NOT EXISTS catatan    TEXT        NULL  AFTER kesimpulan;
 
--- ── 4. Tambah setting sync_interval (default 15 detik) ──────────
-INSERT INTO settings (setting_key, setting_value)
-VALUES ('sync_interval', '15')
-ON DUPLICATE KEY UPDATE setting_value = setting_value;   -- jangan overwrite bila sudah diubah user
+-- ── 4. Tambah settings baru ─────────────────────────────────────
+INSERT INTO settings (setting_key, setting_value) VALUES ('sync_interval',      '15') ON DUPLICATE KEY UPDATE setting_value = setting_value;
+INSERT INTO settings (setting_key, setting_value) VALUES ('scheduler_enabled',  '1')  ON DUPLICATE KEY UPDATE setting_value = setting_value;
+INSERT INTO settings (setting_key, setting_value) VALUES ('cleanup_enabled',    '1')  ON DUPLICATE KEY UPDATE setting_value = setting_value;
 
 -- ── Selesai ──────────────────────────────────────────────────────
 SELECT 'Migration 002 selesai.' AS info;

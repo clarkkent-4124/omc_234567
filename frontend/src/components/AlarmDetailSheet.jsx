@@ -112,10 +112,10 @@ export default function AlarmDetailSheet({ alarm: initialAlarm, onClose, user, o
     setSaving(true);
     try {
       await api.ackAlarm({
-        point_his_id: initialAlarm.id,
-        ack_by:       user.username,
+        pkey:       initialAlarm.id,
+        ack_by:     user.username,
         kesimpulan,
-        keterangan:   keterangan.trim(),
+        keterangan: keterangan.trim(),
       });
       onAck?.();
       onClose();
@@ -182,10 +182,11 @@ export default function AlarmDetailSheet({ alarm: initialAlarm, onClose, user, o
                 </span>
               </div>
               <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', lineHeight: 1.3 }}>
-                {alarm?.point_text || alarm?.point_name || alarm?.point_number || '—'}
+                {alarm?.point_text || '—'}
               </div>
               <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
-                {alarm?.path1_text} {alarm?.path3_text ? `· ${alarm.path3_text}` : ''}
+                {alarm?.path1_text}
+                {(alarm?.SUMBER_FEEDER || alarm?.KEYPOINT) ? ` · ${alarm.SUMBER_FEEDER || alarm.KEYPOINT}` : ''}
               </div>
             </div>
             <button
@@ -372,12 +373,12 @@ export default function AlarmDetailSheet({ alarm: initialAlarm, onClose, user, o
           {/* ── Durasi ── */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
             {[
-              { label: 'Durasi',       value: loading ? '...' : formatDurasi(detail?.durasi_detik), color: isActive ? 'var(--pickup)' : '#22c55e' },
-              { label: 'Waktu Alarm',  value: loading ? '...' : formatTime(alarm?.datum_2), sub: formatDate(alarm?.datum_2), color: 'var(--accent)' },
-              { label: isActive ? 'Belum Clear' : 'Waktu Clear',
-                value: loading ? '...' : (isActive ? '—' : formatTime(alarm?.datum_1)),
-                sub: isActive ? '' : formatDate(alarm?.datum_1),
-                color: isActive ? 'var(--dim)' : '#22c55e' },
+              { label: 'Durasi',      value: loading ? '...' : formatDurasi(detail?.durasi_detik), color: isActive ? 'var(--pickup)' : '#22c55e' },
+              { label: 'Waktu Alarm', value: loading ? '...' : formatTime(alarm?.datum_2), sub: formatDate(alarm?.datum_2), color: 'var(--accent)' },
+              { label: 'Waktu Ack',
+                value: loading ? '...' : (alarm?.ack_at ? formatTime(alarm.ack_at) : '—'),
+                sub:   alarm?.ack_at ? formatDate(alarm.ack_at) : '',
+                color: alarm?.ack_at ? '#22c55e' : 'var(--dim)' },
             ].map(item => (
               <div key={item.label} style={{ flex: 1, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 10px 8px', textAlign: 'center' }}>
                 <div style={{ fontSize: 10, color: 'var(--dim)', marginBottom: 4 }}>{item.label}</div>
@@ -390,18 +391,18 @@ export default function AlarmDetailSheet({ alarm: initialAlarm, onClose, user, o
           {/* ── Informasi Lokasi ── */}
           <SectionTitle>Informasi Lokasi</SectionTitle>
           <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px 14px', marginBottom: 16 }}>
-            <InfoRow label="GI"     value={alarm?.path1_text} />
-            <InfoRow label="Feeder" value={alarm?.path3_text} />
-            <InfoRow label="Kode"   value={alarm?.path1}      mono />
+            <InfoRow label="GI / Feeder"   value={alarm?.path1_text} />
+            <InfoRow label="Sumber/KP"     value={alarm?.SUMBER_FEEDER || alarm?.KEYPOINT} />
+            <InfoRow label="POINT_KEY"     value={alarm?.POINT_KEY} mono />
           </div>
 
           {/* ── Detail Teknis ── */}
           <SectionTitle>Detail Teknis</SectionTitle>
           <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px 14px', marginBottom: 16 }}>
-            <InfoRow label="Point"      value={alarm?.point_text}   />
-            <InfoRow label="Point No."  value={alarm?.point_number} mono />
-            <InfoRow label="Status 1"   value={alarm?.status_1}     />
-            {alarm?.status_2 && <InfoRow label="Status 2" value={alarm.status_2} />}
+            <InfoRow label="Indikasi"   value={alarm?.point_text} />
+            <InfoRow label="Relay"      value={alarm?.RELAY}   mono />
+            <InfoRow label="Phase"      value={alarm?.PHASE}   mono />
+            <InfoRow label="SCADA"      value={alarm?.KESIMPULAN} />
           </div>
 
           {/* ── Riwayat ── */}
@@ -419,23 +420,24 @@ export default function AlarmDetailSheet({ alarm: initialAlarm, onClose, user, o
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {riwayat.map((r, i) => {
-                const rActive = r.status === 'ACTIVE';
+                const isApp = r.KESIMPULAN === 'App';
                 return (
                   <div key={r.id} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                    <div>
+                    <div style={{ minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
                         <span style={{ fontSize: 10, color: 'var(--dim)', fontFamily: 'JetBrains Mono, monospace' }}>#{String(i + 1).padStart(2, '0')}</span>
-                        <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: rActive ? 'var(--pickup-bg)' : 'rgba(34,197,94,0.1)', color: rActive ? 'var(--pickup)' : '#22c55e' }}>
-                          {r.status}
+                        <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 4,
+                          background: isApp ? 'var(--pickup-bg)' : 'rgba(34,197,94,0.1)',
+                          color:      isApp ? 'var(--pickup)'    : '#22c55e' }}>
+                          {isApp ? 'PICKUP' : 'CLEAR'}
                         </span>
+                        {(r.INDIKASI || r.RELAY) && (
+                          <span style={{ fontSize: 10, color: 'var(--dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {[r.INDIKASI, r.RELAY, r.PHASE].filter(Boolean).join(' · ')}
+                          </span>
+                        )}
                       </div>
                       <div style={{ fontSize: 11, color: 'var(--muted)' }}>{formatDT(r.datum_2)}</div>
-                    </div>
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: rActive ? 'var(--pickup)' : '#22c55e', fontFamily: 'JetBrains Mono, monospace' }}>
-                        {formatDurasi(r.durasi_detik)}
-                      </div>
-                      <div style={{ fontSize: 9, color: 'var(--dim)', marginTop: 1 }}>durasi</div>
                     </div>
                   </div>
                 );

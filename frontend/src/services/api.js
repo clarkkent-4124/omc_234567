@@ -44,7 +44,8 @@ export const api = {
   getDashboardGI:       (params = {}) => get('/dashboard/gi-bermasalah',   params),
 
   // Alarms
-  getAlarms:            (params = {}) => get('/alarms',                    params),
+  getAlarms:            (params = {}) => get('/alarms',                    params),   // live (alarm_active)
+  getAlarmHistory:      (params = {}) => get('/alarms/history',            params),   // history (sync_prtspl, permanen)
   getAlarmDetail:       (id)          => get(`/alarms/${id}`),
   getTerpantau:         (params = {}) => get('/alarms/terpantau',          params),
   ackAlarm:             (body)        => post('/alarms/ack',               body),

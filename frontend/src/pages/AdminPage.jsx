@@ -264,7 +264,7 @@ function SchedulerStatusCard({ intervalValue, onIntervalChange }) {
           <div>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2 }}>Status Scheduler</div>
             <div style={{ fontSize: 10, color: 'var(--dim)', marginTop: 2 }}>
-              Cek <code style={{ fontFamily: 'JetBrains Mono, monospace', background: 'var(--border)', padding: '0 3px', borderRadius: 3 }}>point_his</code>{' '}
+              Cek <code style={{ fontFamily: 'JetBrains Mono, monospace', background: 'var(--border)', padding: '0 3px', borderRadius: 3 }}>sync_prtspl</code>{' '}
               tiap{' '}
               <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: 'var(--text)' }}>
                 {status?.intervalSeconds ?? '…'} seconds
@@ -834,6 +834,14 @@ function PengaturanTab({ user }) {
   const [error,        setError]        = useState('');
   const [warnings,     setWarnings]     = useState([]);
 
+  // Toggle alarm engine (trigger)
+  const [engineEnabled,  setEngineEnabled]  = useState(true);
+  const [toggling,       setToggling]       = useState(false);
+
+  // Toggle auto-cleanup
+  const [cleanupEnabled, setCleanupEnabled] = useState(true);
+  const [togglingClean,  setTogglingClean]  = useState(false);
+
   useEffect(() => {
     api.getSettings()
       .then(data => {
@@ -843,10 +851,40 @@ function PengaturanTab({ user }) {
           sla_warning:        data.sla_warning        ?? '',
           sla_breach:         data.sla_breach         ?? '',
         });
+        // scheduler_enabled: '1' = aktif, '0' = nonaktif (default aktif)
+        setEngineEnabled(data.scheduler_enabled === undefined || Number(data.scheduler_enabled) === 1);
+        // cleanup_enabled: '1' = aktif, '0' = nonaktif (default aktif)
+        setCleanupEnabled(data.cleanup_enabled === undefined || Number(data.cleanup_enabled) === 1);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  async function handleToggleEngine() {
+    const newVal = engineEnabled ? 0 : 1;
+    setToggling(true);
+    try {
+      await api.saveSettings({ scheduler_enabled: newVal });
+      setEngineEnabled(!!newVal);
+    } catch (err) {
+      setError('Gagal mengubah status alarm engine: ' + err.message);
+    } finally {
+      setToggling(false);
+    }
+  }
+
+  async function handleToggleCleanup() {
+    const newVal = cleanupEnabled ? 0 : 1;
+    setTogglingClean(true);
+    try {
+      await api.saveSettings({ cleanup_enabled: newVal });
+      setCleanupEnabled(!!newVal);
+    } catch (err) {
+      setError('Gagal mengubah status auto-cleanup: ' + err.message);
+    } finally {
+      setTogglingClean(false);
+    }
+  }
 
   function setField(key, val) {
     setForm(f => ({ ...f, [key]: val }));
@@ -908,18 +946,102 @@ function PengaturanTab({ user }) {
           <div style={{ height: 3, background: 'var(--border)', overflow: 'hidden', opacity: showProgress ? 1 : 0, transition: 'opacity 0.2s' }}>
             <div className="progress-sweep" style={{ width: '25%', height: '100%', background: 'linear-gradient(90deg, transparent, #a855f7, #7c3aed, transparent)', borderRadius: 2 }} />
           </div>
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg, #f97316, #ef4444)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                <circle cx="12" cy="12" r="3" />
-                <path d="M19.07 4.93a10 10 0 0 1 0 14.14" /><path d="M4.93 4.93a10 10 0 0 0 0 14.14" />
-              </svg>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 28, height: 28, borderRadius: 8, background: engineEnabled ? 'linear-gradient(135deg, #f97316, #ef4444)' : 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background 0.3s' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={engineEnabled ? 'white' : 'var(--dim)'} strokeWidth="2">
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14" /><path d="M4.93 4.93a10 10 0 0 0 0 14.14" />
+                </svg>
+              </div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2 }}>Alarm Engine</div>
+                <div style={{ fontSize: 10, color: engineEnabled ? 'var(--dim)' : '#ef4444', marginTop: 1, fontWeight: engineEnabled ? 400 : 600 }}>
+                  {engineEnabled ? 'Deteksi & aktivasi alarm aktif' : 'Alarm engine dinonaktifkan'}
+                </div>
+              </div>
             </div>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2 }}>Alarm Engine</div>
-              <div style={{ fontSize: 10, color: 'var(--dim)', marginTop: 1 }}>Konfigurasi deteksi & aktivasi alarm</div>
-            </div>
+
+            {/* Toggle ON/OFF */}
+            <button
+              type="button"
+              onClick={handleToggleEngine}
+              disabled={toggling || loading}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 7,
+                padding: '6px 12px', borderRadius: 20, cursor: toggling ? 'wait' : 'pointer',
+                fontFamily: 'IBM Plex Sans, sans-serif', fontSize: 11, fontWeight: 700,
+                border: `1px solid ${engineEnabled ? 'rgba(34,197,94,0.4)' : 'rgba(239,68,68,0.4)'}`,
+                background: engineEnabled ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+                color: engineEnabled ? '#22c55e' : '#ef4444',
+                transition: 'all 0.2s', flexShrink: 0,
+                opacity: toggling || loading ? 0.6 : 1,
+              }}
+            >
+              {/* Slider visual */}
+              <div style={{
+                width: 28, height: 16, borderRadius: 8, position: 'relative',
+                background: engineEnabled ? '#22c55e' : '#ef4444',
+                transition: 'background 0.2s', flexShrink: 0,
+              }}>
+                <div style={{
+                  position: 'absolute', top: 2,
+                  left: engineEnabled ? 14 : 2,
+                  width: 12, height: 12, borderRadius: '50%', background: '#fff',
+                  transition: 'left 0.2s',
+                }} />
+              </div>
+              {toggling ? '...' : engineEnabled ? 'ON' : 'OFF'}
+            </button>
           </div>
+          {/* Auto-Cleanup toggle row */}
+          <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, background: 'var(--bg)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 22, height: 22, borderRadius: 6, background: cleanupEnabled ? 'rgba(234,179,8,0.2)' : 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background 0.3s' }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={cleanupEnabled ? '#eab308' : 'var(--dim)'} strokeWidth="2.5">
+                  <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4h6v2" />
+                </svg>
+              </div>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', lineHeight: 1.2 }}>Auto-Cleanup Recovery</div>
+                <div style={{ fontSize: 10, color: 'var(--dim)', marginTop: 1 }}>
+                  {cleanupEnabled
+                    ? 'Hapus otomatis alarm yang sudah recovery (Dis)'
+                    : 'Alarm tidak dihapus otomatis — manual ack saja'}
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleToggleCleanup}
+              disabled={togglingClean || loading}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '5px 10px', borderRadius: 20, cursor: togglingClean ? 'wait' : 'pointer',
+                fontFamily: 'IBM Plex Sans, sans-serif', fontSize: 11, fontWeight: 700,
+                border: `1px solid ${cleanupEnabled ? 'rgba(234,179,8,0.4)' : 'rgba(100,116,139,0.4)'}`,
+                background: cleanupEnabled ? 'rgba(234,179,8,0.1)' : 'rgba(100,116,139,0.1)',
+                color: cleanupEnabled ? '#ca8a04' : '#64748b',
+                transition: 'all 0.2s', flexShrink: 0,
+                opacity: togglingClean || loading ? 0.6 : 1,
+              }}
+            >
+              <div style={{
+                width: 24, height: 14, borderRadius: 7, position: 'relative',
+                background: cleanupEnabled ? '#eab308' : '#64748b',
+                transition: 'background 0.2s', flexShrink: 0,
+              }}>
+                <div style={{
+                  position: 'absolute', top: 1,
+                  left: cleanupEnabled ? 11 : 1,
+                  width: 12, height: 12, borderRadius: '50%', background: '#fff',
+                  transition: 'left 0.2s',
+                }} />
+              </div>
+              {togglingClean ? '...' : cleanupEnabled ? 'ON' : 'OFF'}
+            </button>
+          </div>
+
           <div style={{ padding: '16px' }}>
             {loading ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -928,7 +1050,7 @@ function PengaturanTab({ user }) {
                 ))}
               </div>
             ) : (
-              <NumberInput label="Trigger Duration" unit="seconds" hint="Durasi invalid sebelum alarm dikonfirmasi aktif." value={form.trigger_duration} onChange={v => setField('trigger_duration', v)} />
+              <NumberInput label="Trigger Duration" unit="seconds" hint="Durasi minimum App harus bertahan sebelum alarm dikonfirmasi aktif." value={form.trigger_duration} onChange={v => setField('trigger_duration', v)} />
             )}
           </div>
         </div>

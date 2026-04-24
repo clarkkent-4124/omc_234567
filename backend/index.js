@@ -178,6 +178,69 @@ app.get('/api/dashboard/gi-bermasalah', async (req, res) => {
 // ALARM LIST
 // ════════════════════════════════════════════════════════════════
 
+// ── GET /api/alarms/history ──────────────────────────────────────
+// History semua alarm dari sync_prtspl (KESIMPULAN='App')
+// Sumber permanen — tidak hilang meski sudah cleared dari alarm_active
+app.get('/api/alarms/history', async (req, res) => {
+  try {
+    const { from, to, jenis, gi, search, page = 1, limit = 20 } = req.query;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    let where = `WHERE sp.KESIMPULAN = 'App' AND sp.JENIS IN ('PICKUP GI', 'PICKUP KP')`;
+    const params = [];
+
+    if (from)   { where += ' AND sp.TIME >= ?'; params.push(from + ' 00:00:00'); }
+    if (to)     { where += ' AND sp.TIME <= ?'; params.push(to   + ' 23:59:59'); }
+    if (jenis === 'PICKUP GI') { where += ` AND sp.JENIS = 'PICKUP GI'`; }
+    if (jenis === 'PICKUP KP') { where += ` AND sp.JENIS = 'PICKUP KP'`; }
+    if (gi)     { where += ' AND sp.GI = ?'; params.push(gi); }
+    if (search) {
+      where += ' AND (sp.GI LIKE ? OR sp.FEEDER_MURNI LIKE ? OR sp.KEYPOINT LIKE ?)';
+      const q = `%${search}%`;
+      params.push(q, q, q);
+    }
+
+    const base = `
+      FROM sync_prtspl sp
+      LEFT JOIN alarm_active aa_a ON aa_a.pkey = sp.PKEY
+      LEFT JOIN alarm_ack    aa_k ON aa_k.pkey = sp.PKEY
+      ${where}
+    `;
+
+    const [[{ total }]] = await db.query(`SELECT COUNT(*) AS total ${base}`, params);
+
+    const [rows] = await db.query(`
+      SELECT
+        sp.PKEY                               AS id,
+        sp.TIME                               AS datum_2,
+        sp.JENIS                              AS jenis,
+        ${PATH1_SQL}                          AS path1_text,
+        ${POINT_TEXT_SQL}                     AS point_text,
+        sp.GI, sp.SUMBER_FEEDER, sp.FEEDER_MURNI,
+        sp.KEYPOINT, sp.INDIKASI, sp.RELAY, sp.PHASE,
+        sp.POINT_KEY,
+        CASE WHEN aa_a.id IS NOT NULL THEN 'ACTIVE' ELSE 'CLEARED' END AS status,
+        aa_a.ack_at, aa_a.ack_by,
+        aa_k.kesimpulan,
+        aa_k.catatan                          AS keterangan,
+        TIMESTAMPDIFF(SECOND, sp.TIME, NOW()) AS durasi_detik
+      ${base}
+      ORDER BY sp.PKEY DESC
+      LIMIT ? OFFSET ?
+    `, [...params, parseInt(limit), offset]);
+
+    res.json({
+      data:       rows,
+      total:      parseInt(total),
+      page:       parseInt(page),
+      limit:      parseInt(limit),
+      totalPages: Math.ceil(parseInt(total) / parseInt(limit)),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── GET /api/alarms ──────────────────────────────────────────────
 // Alarm aktif dari alarm_active (tab Live)
 app.get('/api/alarms', async (req, res) => {
@@ -350,18 +413,19 @@ app.post('/api/login', async (req, res) => {
 });
 
 // ── POST /api/alarms/ack ──────────────────────────────────────────
-// Body: { point_his_id, ack_by, kesimpulan: 'valid'|'invalid', keterangan }
+// Body: { pkey, ack_by, kesimpulan: 'valid'|'invalid', keterangan }
 app.post('/api/alarms/ack', async (req, res) => {
   try {
-    const { point_his_id, ack_by, kesimpulan, keterangan } = req.body;
+    const { pkey, ack_by, kesimpulan, keterangan } = req.body;
 
-    if (!point_his_id || !ack_by)
+    if (!pkey || !ack_by)
       return res.status(400).json({ error: 'Data tidak lengkap.' });
     if (!kesimpulan || !['valid', 'invalid'].includes(kesimpulan))
       return res.status(400).json({ error: 'Kesimpulan wajib diisi (valid / invalid).' });
     if (!keterangan || !keterangan.trim())
       return res.status(400).json({ error: 'Keterangan wajib diisi.' });
 
+    // 1. Simpan ke alarm_ack — record permanen, tidak pernah dihapus
     await db.query(
       `INSERT INTO alarm_ack (pkey, ack_by, kesimpulan, catatan)
        VALUES (?, ?, ?, ?)
@@ -370,14 +434,14 @@ app.post('/api/alarms/ack', async (req, res) => {
          kesimpulan = VALUES(kesimpulan),
          catatan    = VALUES(catatan),
          ack_at     = NOW()`,
-      [point_his_id, ack_by, kesimpulan, keterangan.trim()]
+      [pkey, ack_by, kesimpulan, keterangan.trim()]
     );
 
+    // 2. Hapus dari alarm_active — alarm sudah ditangani operator
+    //    point_key bebas untuk trigger alarm baru jika relay pickup lagi
     await db.query(
-      `UPDATE alarm_active
-       SET ack_at = NOW(), ack_by = ?, status = 'TERPANTAU'
-       WHERE pkey = ?`,
-      [ack_by, point_his_id]
+      `DELETE FROM alarm_active WHERE pkey = ?`,
+      [pkey]
     );
 
     res.json({ success: true });
@@ -478,7 +542,7 @@ app.get('/api/settings', async (req, res) => {
 
 app.post('/api/settings', async (req, res) => {
   try {
-    const ALLOWED = ['trigger_duration', 'scheduler_interval', 'sync_interval', 'sla_warning', 'sla_breach'];
+    const ALLOWED = ['trigger_duration', 'scheduler_interval', 'sync_interval', 'scheduler_enabled', 'cleanup_enabled', 'sla_warning', 'sla_breach'];
     const entries = Object.entries(req.body).filter(([k]) => ALLOWED.includes(k));
     if (entries.length === 0) return res.status(400).json({ error: 'Data tidak lengkap.' });
 

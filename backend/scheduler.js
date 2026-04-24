@@ -4,6 +4,8 @@ const { mysql: db } = require('./db');
 const state = {
   timer:           null,
   running:         false,
+  triggerEnabled:  true,    // scheduler_enabled: false = skip trigger & cleanup
+  cleanupEnabled:  true,    // cleanup_enabled:   false = skip cleanup saja
   jobRunning:      false,   // prevent concurrent runs
   intervalSeconds: 10,
   lastRun:         null,
@@ -22,6 +24,8 @@ async function loadSettings() {
   return {
     trigger_duration:   s.trigger_duration   || 30,
     scheduler_interval: s.scheduler_interval || 10,
+    scheduler_enabled:  s.scheduler_enabled  !== undefined ? s.scheduler_enabled : 1,
+    cleanup_enabled:    s.cleanup_enabled    !== undefined ? s.cleanup_enabled    : 1,
   };
 }
 
@@ -31,69 +35,67 @@ async function runJob() {
   state.jobRunning = true;
 
   try {
-    const { trigger_duration } = await loadSettings();
+    const { trigger_duration, scheduler_enabled, cleanup_enabled } = await loadSettings();
 
-    // ── 1. Cari alarm baru yang perlu di-trigger ─────────────────
-    //
-    // Kriteria:
-    //   - sp.KESIMPULAN = 'App'    → posisi pickup / alarm aktif
-    //   - sp.JENIS ∈ PICKUP GI/KP → hanya tipe yang dipantau
-    //   - Row adalah yang TERBARU per POINT_KEY (PKEY = MAX per group)
-    //   - Sudah melewati trigger_duration detik sejak sp.TIME
-    //   - POINT_KEY belum ada di alarm_active
-    //
-    const [toTrigger] = await db.query(`
-      SELECT sp.PKEY, sp.TIME AS alarm_start, sp.POINT_KEY
-      FROM sync_prtspl sp
-      INNER JOIN (
-        SELECT POINT_KEY, MAX(PKEY) AS max_pkey
-        FROM sync_prtspl
-        WHERE JENIS IN ('PICKUP GI', 'PICKUP KP')
-        GROUP BY POINT_KEY
-      ) latest ON sp.PKEY = latest.max_pkey
-      LEFT JOIN alarm_active aa ON aa.point_key = sp.POINT_KEY
-      WHERE sp.KESIMPULAN = 'App'
-        AND sp.JENIS IN ('PICKUP GI', 'PICKUP KP')
-        AND TIMESTAMPDIFF(SECOND, sp.TIME, NOW()) > ?
-        AND aa.id IS NULL
-    `, [trigger_duration]);
+    state.triggerEnabled = !!scheduler_enabled;
+    state.cleanupEnabled = !!cleanup_enabled;
 
-    // ── 2. Insert ke alarm_active ─────────────────────────────────
+    // ── TRIGGER ──────────────────────────────────────────────────
     let triggered = 0;
-    for (const alarm of toTrigger) {
-      try {
-        await db.query(
-          `INSERT INTO alarm_active (pkey, point_key, triggered_at)
-           VALUES (?, ?, NOW())`,
-          [alarm.PKEY, alarm.POINT_KEY]
-        );
-        triggered++;
-        console.log(`[Scheduler] ✚ Triggered: ${alarm.POINT_KEY}`);
-      } catch {
-        // UNIQUE constraint — point_key sudah ada di alarm_active, skip
+
+    if (scheduler_enabled) {
+      const [toTrigger] = await db.query(`
+        SELECT sp.PKEY, sp.TIME AS alarm_start, sp.POINT_KEY
+        FROM sync_prtspl sp
+        INNER JOIN (
+          SELECT POINT_KEY, MAX(PKEY) AS max_pkey
+          FROM sync_prtspl
+          WHERE JENIS IN ('PICKUP GI', 'PICKUP KP')
+          GROUP BY POINT_KEY
+        ) latest ON sp.PKEY = latest.max_pkey
+        LEFT JOIN alarm_active aa ON aa.point_key = sp.POINT_KEY
+        WHERE sp.KESIMPULAN = 'App'
+          AND sp.JENIS IN ('PICKUP GI', 'PICKUP KP')
+          AND TIMESTAMPDIFF(SECOND, sp.TIME, NOW()) > ?
+          AND aa.id IS NULL
+      `, [trigger_duration]);
+
+      for (const alarm of toTrigger) {
+        try {
+          await db.query(
+            `INSERT INTO alarm_active (pkey, point_key, triggered_at)
+             VALUES (?, ?, NOW())`,
+            [alarm.PKEY, alarm.POINT_KEY]
+          );
+          triggered++;
+          console.log(`[Scheduler] ✚ Triggered: ${alarm.POINT_KEY}`);
+        } catch {
+          // UNIQUE constraint — point_key sudah ada, skip
+        }
       }
     }
 
-    // ── 3. Cleanup: hapus alarm_active yang sudah recovery ────────
-    //
-    // Recovery = ada row BARU (PKEY lebih besar) di sync_prtspl
-    //            dengan POINT_KEY yang sama dan KESIMPULAN = 'Dis'
-    //            (artinya relay sudah kembali normal / drop-off)
-    //
-    const [cleaned] = await db.query(`
-      DELETE aa FROM alarm_active aa
-      WHERE EXISTS (
-        SELECT 1 FROM sync_prtspl sp
-        WHERE sp.POINT_KEY = aa.point_key
-          AND sp.PKEY      > aa.pkey
-          AND sp.KESIMPULAN = 'Dis'
-          AND sp.JENIS IN ('PICKUP GI', 'PICKUP KP')
-      )
-    `);
-    const cleanedCount = cleaned.affectedRows || 0;
-    if (cleanedCount > 0) console.log(`[Scheduler] ✖ Cleaned: ${cleanedCount}`);
+    // ── CLEANUP ──────────────────────────────────────────────────
+    // Hapus alarm_active yang relay-nya sudah recovery (Dis datang setelah App)
+    // Bisa di-nonaktifkan jika ingin semua alarm tetap sampai diack operator
+    let cleanedCount = 0;
 
-    // ── 4. Hitung total active ────────────────────────────────────
+    if (cleanup_enabled) {
+      const [cleaned] = await db.query(`
+        DELETE aa FROM alarm_active aa
+        WHERE EXISTS (
+          SELECT 1 FROM sync_prtspl sp
+          WHERE sp.POINT_KEY  = aa.point_key
+            AND sp.PKEY       > aa.pkey
+            AND sp.KESIMPULAN = 'Dis'
+            AND sp.JENIS IN ('PICKUP GI', 'PICKUP KP')
+        )
+      `);
+      cleanedCount = cleaned.affectedRows || 0;
+      if (cleanedCount > 0) console.log(`[Scheduler] ✖ Cleaned: ${cleanedCount}`);
+    }
+
+    // ── Hitung total active ───────────────────────────────────────
     const [[{ total }]] = await db.query('SELECT COUNT(*) AS total FROM alarm_active');
 
     state.lastRun        = new Date();
@@ -128,7 +130,6 @@ async function start() {
     await runJob();
 
     state.timer = setInterval(async () => {
-      // Cek apakah interval berubah di settings
       try {
         const { scheduler_interval: newInterval } = await loadSettings();
         if (newInterval !== state.intervalSeconds) {
@@ -141,7 +142,7 @@ async function start() {
       await runJob();
     }, scheduler_interval * 1000);
 
-    console.log(`[Scheduler] ▶ Berjalan — interval: ${scheduler_interval}s, trigger_duration: (dari settings)`);
+    console.log(`[Scheduler] ▶ Berjalan — interval: ${scheduler_interval}s`);
   } catch (err) {
     state.error   = err.message;
     state.running = false;
@@ -156,10 +157,12 @@ function stop() {
   console.log('[Scheduler] ■ Dihentikan');
 }
 
-// ── Ambil status (untuk API) ──────────────────────────────────────
+// ── Status (untuk API) ────────────────────────────────────────────
 function getStatus() {
   return {
     running:         state.running,
+    triggerEnabled:  state.triggerEnabled,
+    cleanupEnabled:  state.cleanupEnabled,
     intervalSeconds: state.intervalSeconds,
     lastRun:         state.lastRun,
     lastTriggered:   state.lastTriggered,
