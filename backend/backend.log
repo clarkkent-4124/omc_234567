@@ -1,0 +1,205 @@
+◇ injected env (11) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (0) from .env // tip: ⌘ enable debugging { debug: true }
+Backend running on http://localhost:5000
+[Scheduler] ▶ Berjalan — interval: 60s, trigger: -s
+◇ injected env (11) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (0) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+Backend running on http://localhost:5000
+[Scheduler] ▶ Berjalan — interval: 60s, trigger: -s
+◇ injected env (11) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (0) from .env // tip: ⌘ enable debugging { debug: true }
+Backend running on http://localhost:5000
+[Scheduler] ▶ Berjalan — interval: 60s, trigger: -s
+◇ injected env (11) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (11) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ⌘ override existing { override: true }
+◇ injected env (11) from .env // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (11) from .env // tip: ⌘ override existing { override: true }
+◇ injected env (11) from .env // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (11) from .env // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (11) from .env // tip: ⌘ enable debugging { debug: true }
+◇ injected env (11) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (11) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (11) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (11) from .env // tip: ⌘ override existing { override: true }
+◇ injected env (11) from .env // tip: ⌘ override existing { override: true }
+◇ injected env (11) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (11) from .env // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (11) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (11) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (11) from .env // tip: ⌘ override existing { override: true }
+◇ injected env (11) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (11) from .env // tip: ⌘ override existing { override: true }
+◇ injected env (11) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (11) from .env // tip: ⌘ override existing { override: true }
+◇ injected env (11) from .env // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (11) from .env // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (11) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (11) from .env // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (11) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (11) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (11) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (11) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (11) from .env // tip: ⌘ override existing { override: true }
+◇ injected env (11) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (11) from .env // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (11) from .env // tip: ⌘ enable debugging { debug: true }
+◇ injected env (11) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (11) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (11) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (11) from .env // tip: ⌘ override existing { override: true }
+◇ injected env (11) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (11) from .env // tip: ⌘ override existing { override: true }
+◇ injected env (11) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (11) from .env // tip: ⌘ enable debugging { debug: true }
+◇ injected env (11) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (11) from .env // tip: ⌘ enable debugging { debug: true }
+◇ injected env (11) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (11) from .env // tip: ⌘ enable debugging { debug: true }
+◇ injected env (11) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (11) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (11) from .env // tip: ⌘ override existing { override: true }
+◇ injected env (11) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (11) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ⌘ enable debugging { debug: true }
+◇ injected env (11) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (11) from .env // tip: ⌘ override existing { override: true }
+◇ injected env (11) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ⌘ enable debugging { debug: true }
+◇ injected env (11) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (11) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (11) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ⌘ enable debugging { debug: true }
+◇ injected env (11) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (11) from .env // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (11) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (11) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (11) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (11) from .env // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (11) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (11) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (11) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (11) from .env // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (11) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (11) from .env // tip: ⌘ enable debugging { debug: true }
+◇ injected env (11) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (11) from .env // tip: ⌘ enable debugging { debug: true }
+◇ injected env (11) from .env // tip: ⌘ override existing { override: true }
+◇ injected env (11) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ⌘ override existing { override: true }
+◇ injected env (11) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (11) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (11) from .env // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (11) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (11) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ⌘ override existing { override: true }
+◇ injected env (11) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (11) from .env // tip: ⌘ override existing { override: true }
+◇ injected env (11) from .env // tip: ⌘ override existing { override: true }
+◇ injected env (11) from .env // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (11) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (11) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (11) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ⌘ enable debugging { debug: true }
+◇ injected env (11) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (11) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (11) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ⌘ enable debugging { debug: true }
+◇ injected env (11) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (11) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (11) from .env // tip: ⌘ enable debugging { debug: true }
+◇ injected env (11) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ⌘ override existing { override: true }
+◇ injected env (11) from .env // tip: ⌘ override existing { override: true }
+◇ injected env (11) from .env // tip: ⌘ enable debugging { debug: true }
+◇ injected env (11) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (11) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (11) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (11) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (11) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (11) from .env // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (11) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (11) from .env // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (11) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (11) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (11) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (11) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (11) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (11) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (11) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (11) from .env // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (11) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (11) from .env // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (11) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (11) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (11) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (11) from .env // tip: ⌘ override existing { override: true }
+◇ injected env (11) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ⌘ override existing { override: true }
+◇ injected env (11) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (11) from .env // tip: ⌘ override existing { override: true }
+◇ injected env (11) from .env // tip: ⌘ override existing { override: true }
+◇ injected env (11) from .env // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (11) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (11) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (11) from .env // tip: ⌘ enable debugging { debug: true }
+◇ injected env (11) from .env // tip: ⌘ override existing { override: true }
+◇ injected env (11) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (11) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (11) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (11) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (11) from .env // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (11) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (11) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (11) from .env // tip: ⌘ enable debugging { debug: true }
+◇ injected env (11) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (11) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (11) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (11) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (11) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (11) from .env // tip: ⌘ enable debugging { debug: true }
+◇ injected env (11) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (11) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (11) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (11) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (11) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (11) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (11) from .env // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (11) from .env // tip: ⌘ override existing { override: true }
+◇ injected env (11) from .env // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (11) from .env // tip: ⌘ enable debugging { debug: true }
+◇ injected env (11) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (11) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+◇ injected env (11) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (11) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
