@@ -205,10 +205,13 @@ async function runJob() {
       cursorSeq          = lastSeq;
       state.lastSequence = lastSeq;
 
+      const firstTime = rows[0].TIME ? new Date(rows[0].TIME).toISOString().slice(0, 19).replace('T', ' ') : '?';
+      const lastTime  = rows[rows.length - 1].TIME ? new Date(rows[rows.length - 1].TIME).toISOString().slice(0, 19).replace('T', ' ') : '?';
+
       if (synced > 0) {
-        console.log(`[Sync] ✚ ${synced} baris (SEQ ${firstSeq}–${lastSeq})`);
+        console.log(`[Sync] ✚ ${synced}/${rows.length} baris | SEQ ${firstSeq}–${lastSeq} | ${firstTime} s/d ${lastTime}`);
       } else {
-        console.log(`[Sync] ○ ${rows.length} baris dilewati (bukan GI/KP), SEQ ${firstSeq}–${lastSeq}`);
+        console.log(`[Sync] ○ ${rows.length} dilewati (bukan GI/KP) | SEQ ${firstSeq}–${lastSeq} | ${firstTime} s/d ${lastTime}`);
       }
 
       // Batch < BATCH_SIZE → sudah habis, tidak perlu loop lagi
@@ -219,6 +222,12 @@ async function runJob() {
     state.lastSynced  = totalSyncedThisRun;
     state.totalSynced += totalSyncedThisRun;
     state.error       = null;
+
+    if (totalSyncedThisRun === 0) {
+      console.log(`[Sync] — Tidak ada data baru | cursor SEQ ${state.lastSequence} | ${new Date().toISOString().slice(0, 19).replace('T', ' ')}`);
+    } else {
+      console.log(`[Sync] ✔ Selesai — total run ini: ${totalSyncedThisRun} baris`);
+    }
 
   } catch (err) {
     state.error   = err.message;
