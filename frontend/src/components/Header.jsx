@@ -28,7 +28,7 @@ const UserIcon = () => (
   </svg>
 );
 
-function LoginModal({ onClose, onLogin }) {
+export function LoginModal({ onClose, onLogin }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading]   = useState(false);

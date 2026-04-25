@@ -1,6 +1,30 @@
-import { useState, useEffect, useCallback } from 'react';
-import { api } from '../services/api';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { api, BACKEND_URL } from '../services/api';
 import AlarmDetailSheet from '../components/AlarmDetailSheet';
+
+// ── Alarm sound (looping, stoppable) ─────────────────────────────
+let _activeAudio = null;
+
+function startAlarmSound() {
+  if (_activeAudio) return; // sudah berbunyi
+  try {
+    const a = new Audio(`${BACKEND_URL}/uploads/alarm.wav?t=${Date.now()}`);
+    a.volume = 0.85;
+    a.loop   = true;
+    a.play().catch(() => {});
+    _activeAudio = a;
+  } catch {}
+}
+
+function stopAlarmSound() {
+  if (!_activeAudio) return;
+  try { _activeAudio.pause(); _activeAudio.currentTime = 0; } catch {}
+  _activeAudio = null;
+}
+
+function isAlarmSoundPlaying() {
+  return !!_activeAudio;
+}
 
 const TYPE_CHIPS = ['Semua', 'PICKUP GI', 'PICKUP KP'];
 
@@ -128,7 +152,9 @@ function TabLive({ user, onRefresh }) {
   const [lastUpdate,    setLastUpdate]    = useState(null);
   const [selectedAlarm, setSelectedAlarm] = useState(null);
   const [slaSettings,   setSlaSettings]   = useState({ sla_warning: null, sla_breach: null });
+  const [soundPlaying,  setSoundPlaying]  = useState(false);
   const [, forceUpdate]                   = useState(0);
+  const prevIdsRef  = useRef(null); // null = first fetch, belum perlu play
 
   const fetchAlarms = useCallback(async () => {
     try {
@@ -136,14 +162,30 @@ function TabLive({ user, onRefresh }) {
       const params = { status: 'ACTIVE', limit: 500 };
       if (activeChip !== 'Semua') params.jenis = activeChip;
       const res = await api.getAlarms(params);
-      setAlarms(res.data || []);
+      const data = res.data || [];
+      setAlarms(data);
       setLastUpdate(new Date());
+
+      // Play sound jika ada alarm ID baru (bukan first fetch)
+      if (prevIdsRef.current !== null) {
+        const hasNew = data.some(a => !prevIdsRef.current.has(a.id));
+        if (hasNew) { startAlarmSound(); setSoundPlaying(true); }
+      }
+      prevIdsRef.current = new Set(data.map(a => a.id));
     } catch (err) {
       setError(err.message || 'Gagal memuat data.');
     } finally {
       setLoading(false);
     }
   }, [activeChip]);
+
+  // Sync state jika audio berhenti sendiri (misal: file tidak ada)
+  useEffect(() => {
+    const t = setInterval(() => {
+      setSoundPlaying(isAlarmSoundPlaying());
+    }, 1000);
+    return () => clearInterval(t);
+  }, []);
 
   useEffect(() => { setLoading(true); fetchAlarms(); }, [fetchAlarms]);
   useEffect(() => {
@@ -191,10 +233,31 @@ function TabLive({ user, onRefresh }) {
       )}
 
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '32px 1fr 64px', padding: '8px 14px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)' }}>
-          {['#', 'GI / Point', 'Waktu'].map(h => (
-            <div key={h} style={{ fontSize: 10, fontWeight: 700, color: 'var(--dim)', letterSpacing: 0.5, textTransform: 'uppercase' }}>{h}</div>
-          ))}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 14px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '32px 1fr 64px', flex: 1 }}>
+            {['#', 'GI / Point', 'Waktu'].map(h => (
+              <div key={h} style={{ fontSize: 10, fontWeight: 700, color: 'var(--dim)', letterSpacing: 0.5, textTransform: 'uppercase' }}>{h}</div>
+            ))}
+          </div>
+          {soundPlaying && (
+            <button
+              className="pulse-alarm"
+              onClick={() => { stopAlarmSound(); setSoundPlaying(false); }}
+              title="Hentikan bunyi alarm"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 5,
+                background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.5)',
+                borderRadius: 8, padding: '4px 10px', cursor: 'pointer',
+                color: '#ef4444', fontSize: 11, fontWeight: 700,
+                fontFamily: 'IBM Plex Sans, sans-serif', flexShrink: 0, marginLeft: 10,
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="6" y="6" width="12" height="12" rx="2"/>
+              </svg>
+              Stop Bunyi
+            </button>
+          )}
         </div>
 
         {loading ? <TableSkeleton cols="32px 1fr 64px" /> : displayed.length === 0 ? (

@@ -5,6 +5,11 @@ export default function FilterCard({ dari, sampai, setDari, setSampai, onApply, 
       border: '1px solid var(--border)',
       borderRadius: 16,
       padding: '14px 14px',
+      height: '100%',
+      boxSizing: 'border-box',
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'center',
     }}>
       <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 10 }}>Filter Tanggal</div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

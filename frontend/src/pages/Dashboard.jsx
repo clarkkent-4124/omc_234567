@@ -8,7 +8,7 @@ import GIList from '../components/GIList';
 const today = new Date().toISOString().split('T')[0];
 const FETCH_COUNT = 3; // DonutChart + BarChart24h + GIList
 
-export default function Dashboard({ onCardClick, onGIClick }) {
+export default function Dashboard({ onCardClick, onGIClick, isDesktop = false }) {
   const [dari, setDari]         = useState(today);
   const [sampai, setSampai]     = useState(today);
   const [appliedDari, setAppliedDari]   = useState(today);
@@ -38,20 +38,36 @@ export default function Dashboard({ onCardClick, onGIClick }) {
     }
   }, []);
 
+  const filterProps = { dari: appliedDari, sampai: appliedSampai, filterKey, applying, onFetchDone };
+
+  if (isDesktop) {
+    return (
+      <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {/* Baris 1: Summary cards (kiri) + Filter (kanan) */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1fr', gap: 20, alignItems: 'stretch' }}>
+          <SummaryCards onCardClick={onCardClick} isDesktop />
+          <FilterCard dari={dari} sampai={sampai} setDari={setDari} setSampai={setSampai} onApply={handleApply} applying={applying} />
+        </div>
+
+        {/* Baris 2: Donut (kiri) + Bar chart (kanan) */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: 20, alignItems: 'start' }}>
+          <DonutChart  {...filterProps} />
+          <BarChart24h {...filterProps} />
+        </div>
+
+        {/* Baris 3: GI List full width */}
+        <GIList {...filterProps} onGIClick={onGIClick} />
+      </div>
+    );
+  }
+
   return (
     <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <SummaryCards onCardClick={onCardClick} />
-      <FilterCard
-        dari={dari}
-        sampai={sampai}
-        setDari={setDari}
-        setSampai={setSampai}
-        onApply={handleApply}
-        applying={applying}
-      />
-      <DonutChart  dari={appliedDari} sampai={appliedSampai} filterKey={filterKey} applying={applying} onFetchDone={onFetchDone} />
-      <BarChart24h dari={appliedDari} sampai={appliedSampai} filterKey={filterKey} applying={applying} onFetchDone={onFetchDone} />
-      <GIList      dari={appliedDari} sampai={appliedSampai} filterKey={filterKey} applying={applying} onFetchDone={onFetchDone} onGIClick={onGIClick} />
+      <FilterCard dari={dari} sampai={sampai} setDari={setDari} setSampai={setSampai} onApply={handleApply} applying={applying} />
+      <DonutChart  {...filterProps} />
+      <BarChart24h {...filterProps} />
+      <GIList      {...filterProps} onGIClick={onGIClick} />
       <div style={{ height: 8 }} />
     </div>
   );

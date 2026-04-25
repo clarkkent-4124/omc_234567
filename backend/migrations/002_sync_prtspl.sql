@@ -46,7 +46,8 @@ ALTER TABLE alarm_ack
 -- ── 4. Tambah settings baru ─────────────────────────────────────
 INSERT INTO settings (setting_key, setting_value) VALUES ('sync_interval',      '15') ON DUPLICATE KEY UPDATE setting_value = setting_value;
 INSERT INTO settings (setting_key, setting_value) VALUES ('scheduler_enabled',  '1')  ON DUPLICATE KEY UPDATE setting_value = setting_value;
-INSERT INTO settings (setting_key, setting_value) VALUES ('cleanup_enabled',    '1')  ON DUPLICATE KEY UPDATE setting_value = setting_value;
+INSERT INTO settings (setting_key, setting_value) VALUES ('cleanup_enabled',           '1') ON DUPLICATE KEY UPDATE setting_value = setting_value;
+INSERT INTO settings (setting_key, setting_value) VALUES ('trigger_duration_enabled', '1') ON DUPLICATE KEY UPDATE setting_value = setting_value;
 
 -- ── Selesai ──────────────────────────────────────────────────────
 SELECT 'Migration 002 selesai.' AS info;

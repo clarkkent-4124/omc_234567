@@ -240,8 +240,8 @@ export default function AlarmDetailSheet({ alarm: initialAlarm, onClose, user, o
             </div>
           )}
 
-          {/* ── Form validasi (hanya operator, belum di-ack) ── */}
-          {user?.role === 'operator' && !alreadyAcked && (
+          {/* ── Form validasi (operator / admin, belum di-ack) ── */}
+          {(user?.role === 'operator' || user?.role === 'admin') && !alreadyAcked && (
             <div style={{ marginBottom: 16 }}>
               {!showForm ? (
                 <button

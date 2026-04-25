@@ -35,6 +35,12 @@ const mssqlConfig = {
 let mssqlPool = null;
 
 async function getMssql() {
+  // Kalau pool ada tapi sudah mati → tutup dulu
+  if (mssqlPool && !mssqlPool.connected) {
+    try { await mssqlPool.close(); } catch {}
+    mssqlPool = null;
+  }
+  // Buat koneksi baru jika belum ada / sudah di-null-kan
   if (!mssqlPool) {
     mssqlPool = await sql.connect(mssqlConfig);
   }

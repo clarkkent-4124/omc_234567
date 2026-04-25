@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import Header from './components/Header';
+import Header, { LoginModal } from './components/Header';
 import BottomNav from './components/BottomNav';
 import { api } from './services/api';
 import Dashboard from './pages/Dashboard';
@@ -7,6 +7,17 @@ import AlarmPage from './pages/AlarmPage';
 import HistoryPage from './pages/HistoryPage';
 import AdminPage from './pages/AdminPage';
 import LaporanPage from './pages/LaporanPage';
+
+function useIsDesktop() {
+  const [v, setV] = useState(() => window.innerWidth >= 768);
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px)');
+    const h = e => setV(e.matches);
+    mq.addEventListener('change', h);
+    return () => mq.removeEventListener('change', h);
+  }, []);
+  return v;
+}
 
 const PLACEHOLDER_PAGE = () => (
   <div className="fade-in" style={{
@@ -38,7 +49,172 @@ const PLACEHOLDER_PAGE = () => (
   </div>
 );
 
+// ── Nav items definition (shared mobile & desktop) ───────────────
+const NAV_ITEMS = [
+  { key: 'dashboard', label: 'Dashboard', icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+      <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+    </svg>
+  )},
+  { key: 'alarm', label: 'Alarm', badge: true, icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+    </svg>
+  )},
+  { key: 'history', label: 'History', icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/>
+    </svg>
+  )},
+  { key: 'laporan', label: 'Laporan', icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+      <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+    </svg>
+  )},
+  { key: 'admin', label: 'Admin', adminOnly: true, icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+    </svg>
+  )},
+];
+
+// ── Desktop Sidebar ───────────────────────────────────────────────
+function Sidebar({ activePage, onNav, user, alarmCount, theme, toggleTheme, onLogin, onLogout }) {
+  const [showLogin, setShowLogin] = useState(false);
+
+  const items = NAV_ITEMS.filter(n => {
+    if (n.adminOnly) return user?.role === 'admin';
+    return true;
+  });
+
+  return (
+    <div style={{
+      width: 220, flexShrink: 0,
+      height: '100dvh', position: 'sticky', top: 0,
+      background: 'var(--surface)',
+      borderRight: '1px solid var(--border)',
+      display: 'flex', flexDirection: 'column',
+      zIndex: 100,
+    }}>
+      {/* Logo */}
+      <div style={{ padding: '20px 18px 16px', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 9, background: 'linear-gradient(135deg, #a855f7, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+            </svg>
+          </div>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', letterSpacing: -0.3 }}>OMC</div>
+            <div style={{ fontSize: 10, color: 'var(--dim)', marginTop: 1 }}>Dashboard</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Nav */}
+      <nav style={{ flex: 1, padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto' }}>
+        {items.map(n => {
+          const active = activePage === n.key;
+          return (
+            <button
+              key={n.key}
+              onClick={() => onNav(n.key)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '9px 12px', borderRadius: 10, border: 'none',
+                background: active ? 'linear-gradient(135deg, #a855f7, #7c3aed)' : 'transparent',
+                color: active ? '#fff' : 'var(--muted)',
+                cursor: 'pointer', fontFamily: 'IBM Plex Sans, sans-serif',
+                fontSize: 13, fontWeight: active ? 700 : 500,
+                width: '100%', textAlign: 'left',
+                transition: 'background 0.15s, color 0.15s',
+                position: 'relative',
+              }}
+              onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--bg)'; }}
+              onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
+            >
+              {n.icon}
+              {n.label}
+              {n.badge && alarmCount > 0 && (
+                <span style={{
+                  marginLeft: 'auto', minWidth: 18, height: 18,
+                  background: '#ef4444', borderRadius: 9,
+                  fontSize: 10, fontWeight: 700, color: '#fff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  padding: '0 5px',
+                }}>
+                  {alarmCount > 99 ? '99+' : alarmCount}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* Bottom — theme + user */}
+      <div style={{ padding: '12px 10px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {/* Theme toggle */}
+        <button
+          onClick={toggleTheme}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '8px 12px', borderRadius: 10, border: 'none',
+            background: 'transparent', color: 'var(--muted)',
+            cursor: 'pointer', fontFamily: 'IBM Plex Sans, sans-serif',
+            fontSize: 12, fontWeight: 500, width: '100%', textAlign: 'left',
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+        >
+          {theme === 'dark'
+            ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          }
+          {theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}
+        </button>
+
+        {/* User */}
+        {user ? (
+          <div style={{ padding: '8px 12px', borderRadius: 10, background: 'var(--bg)', border: '1px solid var(--border)' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>{user.username}</div>
+            <div style={{ fontSize: 10, color: 'var(--dim)', marginBottom: 6 }}>{user.role}</div>
+            <button
+              onClick={onLogout}
+              style={{ fontSize: 11, color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'IBM Plex Sans, sans-serif', fontWeight: 600 }}
+            >
+              Logout
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowLogin(true)}
+            style={{
+              padding: '8px 12px', borderRadius: 10,
+              border: '1px solid var(--border)', background: 'var(--bg)',
+              color: 'var(--muted)', fontSize: 12, fontWeight: 600,
+              cursor: 'pointer', fontFamily: 'IBM Plex Sans, sans-serif',
+              width: '100%',
+            }}
+          >
+            Login
+          </button>
+        )}
+      </div>
+
+      {showLogin && (
+        <LoginModal
+          onClose={() => setShowLogin(false)}
+          onLogin={u => { onLogin(u); setShowLogin(false); }}
+        />
+      )}
+    </div>
+  );
+}
+
 export default function App() {
+  const isDesktop = useIsDesktop();
   const [activePage, setActivePage] = useState('dashboard');
   const [historyFilter, setHistoryFilter] = useState('Semua');
   const [theme, setTheme] = useState(() => localStorage.getItem('omc-theme') || 'dark');
@@ -101,55 +277,53 @@ export default function App() {
     setActivePage(tab);
   }
 
-  return (
-    <div data-theme={theme} style={{
-      background: 'var(--bg)',
-      minHeight: '100dvh',
-      display: 'flex',
-      justifyContent: 'center',
-    }}>
-      <div style={{
-        width: '100%',
-        maxWidth: 430,
-        minHeight: '100dvh',
-        position: 'relative',
-        background: 'var(--bg)',
-      }}>
-        <Header
+  const pageContent = (
+    <>
+      {activePage === 'dashboard' && (
+        <Dashboard
+          isDesktop={isDesktop}
+          onCardClick={handleCardClick}
+          onGIClick={() => { setHistoryFilter('Semua'); setActivePage('history'); }}
+        />
+      )}
+      {activePage === 'alarm'   && <AlarmPage user={user} />}
+      {activePage === 'history' && <HistoryPage initialFilter={historyFilter} />}
+      {activePage === 'laporan' && <LaporanPage />}
+      {activePage === 'tindak'  && user?.role === 'operator' && <PLACEHOLDER_PAGE />}
+      {activePage === 'admin'   && user?.role === 'admin'    && <AdminPage user={user} />}
+    </>
+  );
+
+  // ── DESKTOP layout ────────────────────────────────────────────
+  if (isDesktop) {
+    return (
+      <div data-theme={theme} style={{ display: 'flex', minHeight: '100dvh', background: 'var(--bg)' }}>
+        <Sidebar
+          activePage={activePage}
+          onNav={handleTabChange}
+          user={user}
+          alarmCount={alarmCount}
           theme={theme}
           toggleTheme={toggleTheme}
-          user={user}
           onLogin={handleLogin}
           onLogout={handleLogout}
         />
-
-        <main style={{
-          paddingTop: 88,
-          paddingBottom: 72,
-          paddingLeft: 14,
-          paddingRight: 14,
-          minHeight: '100dvh',
-          overflowY: 'auto',
-        }}>
-          {activePage === 'dashboard' && (
-            <Dashboard
-              onCardClick={handleCardClick}
-              onGIClick={() => { setHistoryFilter('Semua'); setActivePage('history'); }}
-            />
-          )}
-          {activePage === 'alarm'   && <AlarmPage user={user} />}
-          {activePage === 'history' && <HistoryPage initialFilter={historyFilter} />}
-          {activePage === 'laporan' && <LaporanPage />}
-          {activePage === 'tindak'  && user?.role === 'operator' && <PLACEHOLDER_PAGE />}
-          {activePage === 'admin'   && user?.role === 'admin'    && <AdminPage user={user} />}
+        <main style={{ flex: 1, minHeight: '100dvh', overflowY: 'auto', padding: '28px 32px' }}>
+          {pageContent}
         </main>
+      </div>
+    );
+  }
 
-        <BottomNav
-          activePage={activePage}
-          setActivePage={handleTabChange}
-          user={user}
-          alarmCount={alarmCount}
-        />
+  // ── MOBILE layout (tidak berubah) ─────────────────────────────
+  return (
+    <div data-theme={theme} style={{ background: 'var(--bg)', minHeight: '100dvh', display: 'flex', justifyContent: 'center' }}>
+      <div style={{ width: '100%', maxWidth: 430, minHeight: '100dvh', position: 'relative', background: 'var(--bg)' }}>
+        <Header theme={theme} toggleTheme={toggleTheme} user={user} onLogin={handleLogin} onLogout={handleLogout} />
+        <main style={{ paddingTop: 88, paddingBottom: 72, paddingLeft: 14, paddingRight: 14, minHeight: '100dvh', overflowY: 'auto' }}>
+          {pageContent}
+        </main>
+        <BottomNav activePage={activePage} setActivePage={handleTabChange} user={user} alarmCount={alarmCount} />
       </div>
     </div>
   );

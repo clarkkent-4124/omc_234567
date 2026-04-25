@@ -2,18 +2,19 @@ const { mysql: db } = require('./db');
 
 // ── State ────────────────────────────────────────────────────────
 const state = {
-  timer:           null,
-  running:         false,
-  triggerEnabled:  true,    // scheduler_enabled: false = skip trigger & cleanup
-  cleanupEnabled:  true,    // cleanup_enabled:   false = skip cleanup saja
-  jobRunning:      false,   // prevent concurrent runs
-  intervalSeconds: 10,
-  lastRun:         null,
-  lastTriggered:   0,       // jumlah trigger pada run terakhir
-  totalTriggered:  0,       // akumulasi sejak server start
-  lastCleaned:     0,
-  totalActive:     0,
-  error:           null,
+  timer:                  null,
+  running:                false,
+  triggerEnabled:         true,  // scheduler_enabled
+  cleanupEnabled:         true,  // cleanup_enabled
+  triggerDurationEnabled: true,  // trigger_duration_enabled
+  jobRunning:             false,
+  intervalSeconds:        10,
+  lastRun:                null,
+  lastTriggered:          0,
+  totalTriggered:         0,
+  lastCleaned:            0,
+  totalActive:            0,
+  error:                  null,
 };
 
 // ── Baca settings dari DB ─────────────────────────────────────────
@@ -22,10 +23,11 @@ async function loadSettings() {
   const s = {};
   rows.forEach(r => { s[r.setting_key] = Number(r.setting_value); });
   return {
-    trigger_duration:   s.trigger_duration   || 30,
-    scheduler_interval: s.scheduler_interval || 10,
-    scheduler_enabled:  s.scheduler_enabled  !== undefined ? s.scheduler_enabled : 1,
-    cleanup_enabled:    s.cleanup_enabled    !== undefined ? s.cleanup_enabled    : 1,
+    trigger_duration:          s.trigger_duration          || 30,
+    scheduler_interval:        s.scheduler_interval        || 10,
+    scheduler_enabled:         s.scheduler_enabled         !== undefined ? s.scheduler_enabled         : 1,
+    cleanup_enabled:           s.cleanup_enabled           !== undefined ? s.cleanup_enabled           : 1,
+    trigger_duration_enabled:  s.trigger_duration_enabled  !== undefined ? s.trigger_duration_enabled  : 1,
   };
 }
 
@@ -35,30 +37,53 @@ async function runJob() {
   state.jobRunning = true;
 
   try {
-    const { trigger_duration, scheduler_enabled, cleanup_enabled } = await loadSettings();
+    const { trigger_duration, scheduler_enabled, cleanup_enabled, trigger_duration_enabled } = await loadSettings();
 
-    state.triggerEnabled = !!scheduler_enabled;
-    state.cleanupEnabled = !!cleanup_enabled;
+    state.triggerEnabled         = !!scheduler_enabled;
+    state.cleanupEnabled         = !!cleanup_enabled;
+    state.triggerDurationEnabled = !!trigger_duration_enabled;
 
     // ── TRIGGER ──────────────────────────────────────────────────
     let triggered = 0;
 
     if (scheduler_enabled) {
-      const [toTrigger] = await db.query(`
-        SELECT sp.PKEY, sp.TIME AS alarm_start, sp.POINT_KEY
-        FROM sync_prtspl sp
-        INNER JOIN (
-          SELECT POINT_KEY, MAX(PKEY) AS max_pkey
-          FROM sync_prtspl
-          WHERE JENIS IN ('PICKUP GI', 'PICKUP KP')
-          GROUP BY POINT_KEY
-        ) latest ON sp.PKEY = latest.max_pkey
-        LEFT JOIN alarm_active aa ON aa.point_key = sp.POINT_KEY
-        WHERE sp.KESIMPULAN = 'App'
-          AND sp.JENIS IN ('PICKUP GI', 'PICKUP KP')
-          AND TIMESTAMPDIFF(SECOND, sp.TIME, NOW()) > ?
-          AND aa.id IS NULL
-      `, [trigger_duration]);
+      let toTrigger;
+
+      if (trigger_duration_enabled) {
+        // Mode GLITCH FILTER: App harus jadi latest event DAN bertahan > X detik
+        [toTrigger] = await db.query(`
+          SELECT sp.PKEY, sp.TIME AS alarm_start, sp.POINT_KEY
+          FROM sync_prtspl sp
+          INNER JOIN (
+            SELECT POINT_KEY, MAX(PKEY) AS max_pkey
+            FROM sync_prtspl
+            WHERE JENIS IN ('PICKUP GI', 'PICKUP KP')
+            GROUP BY POINT_KEY
+          ) latest ON sp.PKEY = latest.max_pkey
+          LEFT JOIN alarm_active aa ON aa.point_key = sp.POINT_KEY
+          WHERE sp.KESIMPULAN = 'App'
+            AND sp.JENIS IN ('PICKUP GI', 'PICKUP KP')
+            AND TIMESTAMPDIFF(SECOND, sp.TIME, NOW()) > ?
+            AND aa.id IS NULL
+        `, [trigger_duration]);
+      } else {
+        // Mode LANGSUNG: trigger setiap ada App terbaru per POINT_KEY,
+        // Dis diabaikan untuk triggering — redundansi dicegah oleh UNIQUE alarm_active
+        [toTrigger] = await db.query(`
+          SELECT sp.PKEY, sp.TIME AS alarm_start, sp.POINT_KEY
+          FROM sync_prtspl sp
+          INNER JOIN (
+            SELECT POINT_KEY, MAX(PKEY) AS max_app_pkey
+            FROM sync_prtspl
+            WHERE JENIS IN ('PICKUP GI', 'PICKUP KP')
+              AND KESIMPULAN = 'App'
+            GROUP BY POINT_KEY
+          ) latest_app ON sp.PKEY = latest_app.max_app_pkey
+          LEFT JOIN alarm_active aa ON aa.point_key = sp.POINT_KEY
+          WHERE sp.JENIS IN ('PICKUP GI', 'PICKUP KP')
+            AND aa.id IS NULL
+        `);
+      }
 
       for (const alarm of toTrigger) {
         try {
@@ -160,9 +185,10 @@ function stop() {
 // ── Status (untuk API) ────────────────────────────────────────────
 function getStatus() {
   return {
-    running:         state.running,
-    triggerEnabled:  state.triggerEnabled,
-    cleanupEnabled:  state.cleanupEnabled,
+    running:                state.running,
+    triggerEnabled:         state.triggerEnabled,
+    cleanupEnabled:         state.cleanupEnabled,
+    triggerDurationEnabled: state.triggerDurationEnabled,
     intervalSeconds: state.intervalSeconds,
     lastRun:         state.lastRun,
     lastTriggered:   state.lastTriggered,

@@ -140,16 +140,18 @@ async function runJob() {
   try {
     const mssql = await getMssql();
 
+    // Titik awal: MAX(PKEY) dari MySQL (abaikan import negatif)
+    // Dibaca SEKALI di awal — tidak diulang tiap batch agar loop bisa maju
+    // walau semua baris batch dilewati (bukan GI/KP)
+    const [[{ startPkey }]] = await db.query(
+      'SELECT COALESCE(MAX(PKEY), 0) AS startPkey FROM sync_prtspl WHERE PKEY > 0'
+    );
+    let cursorPkey = Math.max(startPkey, state.lastPkey || 0);
+
     // Loop: terus ambil batch sampai SQL Server tidak punya sisa
     while (true) {
-      // Baca titik terakhir dari MySQL setiap iterasi
-      // supaya akurat walaupun ada insert dari proses lain
-      const [[{ lastPkey }]] = await db.query(
-        'SELECT COALESCE(MAX(PKEY), 0) AS lastPkey FROM sync_prtspl'
-      );
-
       const result = await mssql.request()
-        .input('lastPkey', lastPkey)
+        .input('lastPkey', cursorPkey)
         .query(`
           SELECT TOP ${BATCH_SIZE}
             PKEY, TIME, [DESC]
@@ -198,6 +200,9 @@ async function runJob() {
       }
 
       totalSyncedThisRun += synced;
+      // Maju cursor ke PKEY tertinggi batch — WAJIB dilakukan walau 0 row diinsert
+      // supaya loop tidak stuck mengulang batch yang sama terus-menerus
+      cursorPkey     = last;
       state.lastPkey = last;
 
       if (synced > 0) {

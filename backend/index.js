@@ -1,7 +1,14 @@
 const express = require('express');
 const cors    = require('cors');
 const bcrypt  = require('bcryptjs');
+const multer  = require('multer');
+const path    = require('path');
+const fs      = require('fs');
 require('dotenv').config();
+
+// ── Uploads directory ─────────────────────────────────────────────
+const UPLOADS_DIR = path.join(__dirname, 'uploads');
+if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR);
 
 const { mysql: db } = require('./db');
 const scheduler = require('./scheduler');
@@ -11,6 +18,22 @@ const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static(UPLOADS_DIR));
+
+// ── Multer: alarm sound (.wav, max 5 MB) ──────────────────────────
+const alarmSoundUpload = multer({
+  storage: multer.diskStorage({
+    destination: UPLOADS_DIR,
+    filename: (req, file, cb) => cb(null, 'alarm.wav'),
+  }),
+  fileFilter: (req, file, cb) => {
+    const ok = file.mimetype === 'audio/wav'
+            || file.mimetype === 'audio/wave'
+            || file.originalname.toLowerCase().endsWith('.wav');
+    ok ? cb(null, true) : cb(new Error('Hanya file .wav yang diizinkan.'));
+  },
+  limits: { fileSize: 5 * 1024 * 1024 },
+});
 
 // ── Helper: date range ───────────────────────────────────────────
 function dateRange(from, to) {
@@ -542,7 +565,7 @@ app.get('/api/settings', async (req, res) => {
 
 app.post('/api/settings', async (req, res) => {
   try {
-    const ALLOWED = ['trigger_duration', 'scheduler_interval', 'sync_interval', 'scheduler_enabled', 'cleanup_enabled', 'sla_warning', 'sla_breach'];
+    const ALLOWED = ['trigger_duration', 'trigger_duration_enabled', 'scheduler_interval', 'sync_interval', 'scheduler_enabled', 'cleanup_enabled', 'sla_warning', 'sla_breach'];
     const entries = Object.entries(req.body).filter(([k]) => ALLOWED.includes(k));
     if (entries.length === 0) return res.status(400).json({ error: 'Data tidak lengkap.' });
 
@@ -819,6 +842,18 @@ app.put('/api/master/point-status/:id', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// ════════════════════════════════════════════════════════════════
+// ALARM SOUND UPLOAD
+// ════════════════════════════════════════════════════════════════
+app.post('/api/upload/alarm-sound', alarmSoundUpload.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'File tidak ditemukan.' });
+  res.json({ success: true });
+});
+
+app.get('/api/upload/alarm-sound/check', (req, res) => {
+  res.json({ exists: fs.existsSync(path.join(UPLOADS_DIR, 'alarm.wav')) });
 });
 
 // ════════════════════════════════════════════════════════════════

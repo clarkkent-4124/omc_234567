@@ -836,12 +836,16 @@ function PengaturanTab({ user }) {
   const [warnings,     setWarnings]     = useState([]);
 
   // Toggle alarm engine (trigger)
-  const [engineEnabled,  setEngineEnabled]  = useState(true);
-  const [toggling,       setToggling]       = useState(false);
+  const [engineEnabled,         setEngineEnabled]         = useState(true);
+  const [toggling,              setToggling]              = useState(false);
 
   // Toggle auto-cleanup
-  const [cleanupEnabled, setCleanupEnabled] = useState(true);
-  const [togglingClean,  setTogglingClean]  = useState(false);
+  const [cleanupEnabled,        setCleanupEnabled]        = useState(true);
+  const [togglingClean,         setTogglingClean]         = useState(false);
+
+  // Toggle trigger duration (glitch filter)
+  const [triggerDurEnabled,     setTriggerDurEnabled]     = useState(true);
+  const [togglingTriggerDur,    setTogglingTriggerDur]    = useState(false);
 
   useEffect(() => {
     api.getSettings()
@@ -852,10 +856,9 @@ function PengaturanTab({ user }) {
           sla_warning:        data.sla_warning        ?? '',
           sla_breach:         data.sla_breach         ?? '',
         });
-        // scheduler_enabled: '1' = aktif, '0' = nonaktif (default aktif)
-        setEngineEnabled(data.scheduler_enabled === undefined || Number(data.scheduler_enabled) === 1);
-        // cleanup_enabled: '1' = aktif, '0' = nonaktif (default aktif)
-        setCleanupEnabled(data.cleanup_enabled === undefined || Number(data.cleanup_enabled) === 1);
+        setEngineEnabled(data.scheduler_enabled        === undefined || Number(data.scheduler_enabled)        === 1);
+        setCleanupEnabled(data.cleanup_enabled         === undefined || Number(data.cleanup_enabled)          === 1);
+        setTriggerDurEnabled(data.trigger_duration_enabled === undefined || Number(data.trigger_duration_enabled) === 1);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -884,6 +887,19 @@ function PengaturanTab({ user }) {
       setError('Gagal mengubah status auto-cleanup: ' + err.message);
     } finally {
       setTogglingClean(false);
+    }
+  }
+
+  async function handleToggleTriggerDur() {
+    const newVal = triggerDurEnabled ? 0 : 1;
+    setTogglingTriggerDur(true);
+    try {
+      await api.saveSettings({ trigger_duration_enabled: newVal });
+      setTriggerDurEnabled(!!newVal);
+    } catch (err) {
+      setError('Gagal mengubah trigger duration: ' + err.message);
+    } finally {
+      setTogglingTriggerDur(false);
     }
   }
 
@@ -995,8 +1011,57 @@ function PengaturanTab({ user }) {
               {toggling ? '...' : engineEnabled ? 'ON' : 'OFF'}
             </button>
           </div>
-          {/* Auto-Cleanup toggle row */}
+          {/* Trigger Duration toggle row */}
           <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, background: 'var(--bg)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 22, height: 22, borderRadius: 6, background: triggerDurEnabled ? 'rgba(99,102,241,0.15)' : 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background 0.3s' }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={triggerDurEnabled ? '#818cf8' : 'var(--dim)'} strokeWidth="2.5">
+                  <circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/>
+                </svg>
+              </div>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', lineHeight: 1.2 }}>Trigger Duration (Glitch Filter)</div>
+                <div style={{ fontSize: 10, color: 'var(--dim)', marginTop: 1 }}>
+                  {triggerDurEnabled
+                    ? 'App harus bertahan X detik sebelum jadi alarm'
+                    : 'Trigger langsung — setiap App terbaru per relay'}
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleToggleTriggerDur}
+              disabled={togglingTriggerDur || loading}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '5px 10px', borderRadius: 20, cursor: togglingTriggerDur ? 'wait' : 'pointer',
+                fontFamily: 'IBM Plex Sans, sans-serif', fontSize: 11, fontWeight: 700,
+                border: `1px solid ${triggerDurEnabled ? 'rgba(99,102,241,0.4)' : 'rgba(100,116,139,0.4)'}`,
+                background: triggerDurEnabled ? 'rgba(99,102,241,0.1)' : 'rgba(100,116,139,0.1)',
+                color: triggerDurEnabled ? '#818cf8' : '#64748b',
+                transition: 'all 0.2s', flexShrink: 0,
+                opacity: togglingTriggerDur || loading ? 0.6 : 1,
+              }}
+            >
+              <div style={{ width: 24, height: 14, borderRadius: 7, position: 'relative', background: triggerDurEnabled ? '#6366f1' : '#64748b', transition: 'background 0.2s', flexShrink: 0 }}>
+                <div style={{ position: 'absolute', top: 1, left: triggerDurEnabled ? 11 : 1, width: 12, height: 12, borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
+              </div>
+              {togglingTriggerDur ? '...' : triggerDurEnabled ? 'ON' : 'OFF'}
+            </button>
+          </div>
+
+          {/* Trigger Duration input — persis di bawah toggle-nya */}
+          {triggerDurEnabled && (
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>
+              {loading
+                ? <div className="skeleton" style={{ height: 42, borderRadius: 8 }} />
+                : <NumberInput label="Trigger Duration" unit="seconds" hint="App harus bertahan X detik (tanpa Dis baru) sebelum dikonfirmasi alarm." value={form.trigger_duration} onChange={v => setField('trigger_duration', v)} />
+              }
+            </div>
+          )}
+
+          {/* Auto-Cleanup toggle row */}
+          <div style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, background: 'var(--bg)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{ width: 22, height: 22, borderRadius: 6, background: cleanupEnabled ? 'rgba(234,179,8,0.2)' : 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background 0.3s' }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={cleanupEnabled ? '#eab308' : 'var(--dim)'} strokeWidth="2.5">
@@ -1027,32 +1092,11 @@ function PengaturanTab({ user }) {
                 opacity: togglingClean || loading ? 0.6 : 1,
               }}
             >
-              <div style={{
-                width: 24, height: 14, borderRadius: 7, position: 'relative',
-                background: cleanupEnabled ? '#eab308' : '#64748b',
-                transition: 'background 0.2s', flexShrink: 0,
-              }}>
-                <div style={{
-                  position: 'absolute', top: 1,
-                  left: cleanupEnabled ? 11 : 1,
-                  width: 12, height: 12, borderRadius: '50%', background: '#fff',
-                  transition: 'left 0.2s',
-                }} />
+              <div style={{ width: 24, height: 14, borderRadius: 7, position: 'relative', background: cleanupEnabled ? '#eab308' : '#64748b', transition: 'background 0.2s', flexShrink: 0 }}>
+                <div style={{ position: 'absolute', top: 1, left: cleanupEnabled ? 11 : 1, width: 12, height: 12, borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
               </div>
               {togglingClean ? '...' : cleanupEnabled ? 'ON' : 'OFF'}
             </button>
-          </div>
-
-          <div style={{ padding: '16px' }}>
-            {loading ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {Array.from({ length: 2 }).map((_, i) => (
-                  <div key={i} className="skeleton" style={{ height: i === 0 ? 10 : 42, borderRadius: 8, width: i === 0 ? '40%' : '100%' }} />
-                ))}
-              </div>
-            ) : (
-              <NumberInput label="Trigger Duration" unit="seconds" hint="Durasi minimum App harus bertahan sebelum alarm dikonfirmasi aktif." value={form.trigger_duration} onChange={v => setField('trigger_duration', v)} />
-            )}
           </div>
         </div>
 
@@ -1131,6 +1175,100 @@ function PengaturanTab({ user }) {
 }
 
 // ════════════════════════════════════════════════════════════════
+// ALARM SOUND CARD
+// ════════════════════════════════════════════════════════════════
+function AlarmSoundCard() {
+  const [exists,    setExists]    = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [result,    setResult]    = useState('');
+  const [error,     setError]     = useState('');
+
+  useEffect(() => {
+    api.checkAlarmSound().then(r => setExists(r.exists)).catch(() => {});
+  }, []);
+
+  async function handleFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploading(true); setError(''); setResult('');
+    try {
+      await api.uploadAlarmSound(file);
+      setExists(true);
+      setResult('Suara alarm berhasil diupload.');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  }
+
+  function handlePreview() {
+    try {
+      const a = new Audio(`http://localhost:5000/uploads/alarm.wav?t=${Date.now()}`);
+      a.play().catch(() => setError('Autoplay diblokir browser. Coba klik play manual.'));
+    } catch {}
+  }
+
+  return (
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
+      <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg, #f97316, #ef4444)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+            </svg>
+          </div>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Suara Alarm</div>
+            <div style={{ fontSize: 10, color: 'var(--dim)' }}>File .wav — diputar saat alarm baru masuk</div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <div style={{ width: 7, height: 7, borderRadius: '50%', background: exists ? '#22c55e' : '#64748b' }} />
+          <span style={{ fontSize: 11, color: exists ? '#22c55e' : 'var(--dim)', fontWeight: 600 }}>
+            {exists ? 'Terpasang' : 'Belum ada'}
+          </span>
+        </div>
+      </div>
+      <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <label style={{
+            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            padding: '9px 0', borderRadius: 10, cursor: 'pointer',
+            border: '1px solid var(--border)', background: 'var(--bg)',
+            color: 'var(--muted)', fontSize: 12, fontWeight: 600,
+            opacity: uploading ? 0.6 : 1,
+          }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            {uploading ? 'Mengupload...' : 'Upload .wav'}
+            <input type="file" accept=".wav,audio/wav" onChange={handleFile} disabled={uploading} style={{ display: 'none' }} />
+          </label>
+          {exists && (
+            <button
+              onClick={handlePreview}
+              style={{
+                padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(34,197,94,0.4)',
+                background: 'rgba(34,197,94,0.1)', color: '#22c55e',
+                fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              Test
+            </button>
+          )}
+        </div>
+        {result && <div style={{ fontSize: 12, color: '#22c55e', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 8, padding: '7px 12px' }}>{result}</div>}
+        {error  && <div style={{ fontSize: 12, color: '#ef4444', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '7px 12px' }}>{error}</div>}
+      </div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════
 // UPLOAD TAB
 // ════════════════════════════════════════════════════════════════
 function UploadTab() {
@@ -1189,6 +1327,8 @@ function UploadTab() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <AlarmSoundCard />
+
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
         {/* Header */}
         <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>

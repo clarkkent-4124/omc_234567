@@ -7,7 +7,7 @@ const CARDS = [
   { key: 'total',     label: 'TOTAL',     colorVar: 'var(--accent)', bgVar: 'var(--accent-bg)', borderVar: 'var(--accent-border)', sub: 'alarm aktif saat ini' },
 ];
 
-export default function SummaryCards({ onCardClick }) {
+export default function SummaryCards({ onCardClick, isDesktop = false }) {
   const [counts, setCounts] = useState({ pickup_gi: '-', pickup_kp: '-', total: '-' });
   const [loading, setLoading] = useState(true);
 
@@ -29,7 +29,7 @@ export default function SummaryCards({ onCardClick }) {
       <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, margin: '0 0 10px', textTransform: 'uppercase' }}>
         Ringkasan Alarm Aktif
       </p>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1fr 1fr 1fr' : '1fr 1fr', gap: 10 }}>
         {CARDS.map((card, idx) => (
           <button
             key={card.key}
@@ -44,8 +44,8 @@ export default function SummaryCards({ onCardClick }) {
               transition: 'transform 0.1s',
               position: 'relative',
               overflow: 'hidden',
-              // card TOTAL full-width di baris bawah
-              gridColumn: idx === 2 ? '1 / -1' : undefined,
+              // card TOTAL full-width hanya di mobile
+              gridColumn: (!isDesktop && idx === 2) ? '1 / -1' : undefined,
             }}
             onMouseDown={e => e.currentTarget.style.transform = 'scale(0.97)'}
             onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}

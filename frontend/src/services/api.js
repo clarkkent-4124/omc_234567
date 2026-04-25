@@ -1,4 +1,5 @@
-const BASE = 'http://localhost:5000/api';
+export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+const BASE = `${BACKEND_URL}/api`;
 
 async function get(path, params = {}) {
   const url = new URL(BASE + path);
@@ -79,4 +80,13 @@ export const api = {
 
   // Import Excel
   importPrtspl:         (rows)        => post('/import/prtspl',            { rows }),
+
+  // Alarm sound
+  checkAlarmSound: () => get('/upload/alarm-sound/check'),
+  uploadAlarmSound: (file) => {
+    const form = new FormData();
+    form.append('file', file);
+    return fetch(BASE + '/upload/alarm-sound', { method: 'POST', body: form })
+      .then(r => r.json().then(d => { if (!r.ok) throw new Error(d.error || 'Upload gagal.'); return d; }));
+  },
 };

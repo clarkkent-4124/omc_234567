@@ -1,0 +1,31 @@
+# ── Dependencies ─────────────────────────────────────────
+node_modules/
+frontend/node_modules/
+backend/node_modules/
+
+# ── Build output ──────────────────────────────────────────
+frontend/dist/
+
+# ── Environment variables (jangan di-commit!) ─────────────
+.env
+.env.local
+.env.*.local
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+frontend/.env.production
+backend/.env
+backend/.env.local
+# .env.example TIDAK di-ignore — sengaja di-commit sebagai template
+
+# ── Vite config (tiap server bisa beda kebutuhan) ─────────
+frontend/vite.config.js
+
+# ── Uploads (file WAV alarm, dll) ─────────────────────────
+backend/uploads/
+
+# ── OS & editor ───────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+*.log
