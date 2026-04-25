@@ -2,15 +2,15 @@ const { mysql: db, getMssql } = require('./db');
 
 // ── State ────────────────────────────────────────────────────────
 const state = {
-  timer:          null,
-  running:        false,
-  jobRunning:     false,
+  timer:           null,
+  running:         false,
+  jobRunning:      false,
   intervalSeconds: 15,
-  lastRun:        null,
-  lastSynced:     0,      // jumlah row yang di-sync pada run terakhir
-  totalSynced:    0,      // akumulasi sejak server start
-  lastPkey:       0,      // PKEY terakhir yang sudah masuk ke MySQL
-  error:          null,
+  lastRun:         null,
+  lastSynced:      0,      // jumlah row yang di-sync pada run terakhir
+  totalSynced:     0,      // akumulasi sejak server start
+  lastSequence:    0,      // SEQUENCE terakhir yang sudah masuk ke MySQL
+  error:           null,
 };
 
 // ── Cache UP3 supaya tidak query DB tiap baris ─────────────────────
@@ -140,24 +140,24 @@ async function runJob() {
   try {
     const mssql = await getMssql();
 
-    // Titik awal: MAX(PKEY) dari MySQL (abaikan import negatif)
+    // Titik awal: MAX(SEQUENCE) dari MySQL
     // Dibaca SEKALI di awal — tidak diulang tiap batch agar loop bisa maju
     // walau semua baris batch dilewati (bukan GI/KP)
-    const [[{ startPkey }]] = await db.query(
-      'SELECT COALESCE(MAX(PKEY), 0) AS startPkey FROM sync_prtspl WHERE PKEY > 0'
+    const [[{ startSeq }]] = await db.query(
+      'SELECT COALESCE(MAX(SEQUENCE), 0) AS startSeq FROM sync_prtspl'
     );
-    let cursorPkey = Math.max(startPkey, state.lastPkey || 0);
+    let cursorSeq = Math.max(startSeq, state.lastSequence || 0);
 
     // Loop: terus ambil batch sampai SQL Server tidak punya sisa
     while (true) {
       const result = await mssql.request()
-        .input('lastPkey', cursorPkey)
+        .input('lastSeq', cursorSeq)
         .query(`
           SELECT TOP ${BATCH_SIZE}
-            PKEY, TIME, [DESC]
+            SEQUENCE, PKEY, TIME, [DESC]
           FROM prtspl
-          WHERE PKEY > @lastPkey
-          ORDER BY PKEY ASC
+          WHERE SEQUENCE > @lastSeq
+          ORDER BY SEQUENCE ASC
         `);
 
       const rows = result.recordset;
@@ -165,9 +165,9 @@ async function runJob() {
       // Tidak ada sisa → selesai
       if (rows.length === 0) break;
 
-      const first = rows[0].PKEY;
-      const last  = rows[rows.length - 1].PKEY;
-      let   synced = 0;
+      const firstSeq = rows[0].SEQUENCE;
+      const lastSeq  = rows[rows.length - 1].SEQUENCE;
+      let   synced   = 0;
 
       for (const row of rows) {
         const parsed = parseDesc(row.DESC);
@@ -180,13 +180,13 @@ async function runJob() {
         try {
           await db.query(
             `INSERT IGNORE INTO sync_prtspl
-               (PKEY, TIME, \`DESC\`,
+               (SEQUENCE, PKEY, TIME, \`DESC\`,
                 JENIS, GI, SUMBER_FEEDER, FEEDER_MURNI, KEYPOINT,
                 INDIKASI, RELAY, PHASE,
                 KESIMPULAN, POINT_KEY, ID_UP3)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
-              row.PKEY, row.TIME, row.DESC,
+              row.SEQUENCE, row.PKEY, row.TIME, row.DESC,
               parsed.JENIS, parsed.GI, parsed.SUMBER_FEEDER,
               parsed.FEEDER_MURNI, parsed.KEYPOINT,
               parsed.INDIKASI, parsed.RELAY, parsed.PHASE,
@@ -195,20 +195,20 @@ async function runJob() {
           );
           synced++;
         } catch (insertErr) {
-          console.error(`[Sync] Insert error PKEY=${row.PKEY}:`, insertErr.message);
+          console.error(`[Sync] Insert error SEQ=${row.SEQUENCE}:`, insertErr.message);
         }
       }
 
       totalSyncedThisRun += synced;
-      // Maju cursor ke PKEY tertinggi batch — WAJIB dilakukan walau 0 row diinsert
+      // Maju cursor ke SEQUENCE tertinggi batch — WAJIB walau 0 row diinsert
       // supaya loop tidak stuck mengulang batch yang sama terus-menerus
-      cursorPkey     = last;
-      state.lastPkey = last;
+      cursorSeq          = lastSeq;
+      state.lastSequence = lastSeq;
 
       if (synced > 0) {
-        console.log(`[Sync] ✚ ${synced} baris (PKEY ${first}–${last})`);
+        console.log(`[Sync] ✚ ${synced} baris (SEQ ${firstSeq}–${lastSeq})`);
       } else {
-        console.log(`[Sync] ○ ${rows.length} baris dilewati (bukan GI/KP), PKEY ${first}–${last}`);
+        console.log(`[Sync] ○ ${rows.length} baris dilewati (bukan GI/KP), SEQ ${firstSeq}–${lastSeq}`);
       }
 
       // Batch < BATCH_SIZE → sudah habis, tidak perlu loop lagi
@@ -281,7 +281,7 @@ function getStatus() {
     lastRun:         state.lastRun,
     lastSynced:      state.lastSynced,
     totalSynced:     state.totalSynced,
-    lastPkey:        state.lastPkey,
+    lastSequence:    state.lastSequence,
     error:           state.error,
   };
 }
