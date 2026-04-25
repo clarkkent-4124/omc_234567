@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "pm2": "^6.0.14"
+  },
+  "devDependencies": {
+    "serve": "^14.2.6"
+  }
+}
