@@ -49,6 +49,8 @@ async function runJob() {
     if (scheduler_enabled) {
       let toTrigger;
 
+      const ALL_JENIS = `'PICKUP GI', 'PICKUP KP', 'RNR', 'TCS'`;
+
       if (trigger_duration_enabled) {
         // Mode GLITCH FILTER: App harus jadi latest event DAN bertahan > X detik
         [toTrigger] = await db.query(`
@@ -57,30 +59,29 @@ async function runJob() {
           INNER JOIN (
             SELECT POINT_KEY, MAX(PKEY) AS max_pkey
             FROM sync_prtspl
-            WHERE JENIS IN ('PICKUP GI', 'PICKUP KP')
+            WHERE JENIS IN (${ALL_JENIS})
             GROUP BY POINT_KEY
           ) latest ON sp.PKEY = latest.max_pkey
           LEFT JOIN alarm_active aa ON aa.point_key = sp.POINT_KEY
           WHERE sp.KESIMPULAN = 'App'
-            AND sp.JENIS IN ('PICKUP GI', 'PICKUP KP')
+            AND sp.JENIS IN (${ALL_JENIS})
             AND TIMESTAMPDIFF(SECOND, sp.TIME, NOW()) > ?
             AND aa.id IS NULL
         `, [trigger_duration]);
       } else {
-        // Mode LANGSUNG: trigger setiap ada App terbaru per POINT_KEY,
-        // Dis diabaikan untuk triggering — redundansi dicegah oleh UNIQUE alarm_active
+        // Mode LANGSUNG: trigger setiap ada App terbaru per POINT_KEY
         [toTrigger] = await db.query(`
           SELECT sp.PKEY, sp.TIME AS alarm_start, sp.POINT_KEY
           FROM sync_prtspl sp
           INNER JOIN (
             SELECT POINT_KEY, MAX(PKEY) AS max_app_pkey
             FROM sync_prtspl
-            WHERE JENIS IN ('PICKUP GI', 'PICKUP KP')
+            WHERE JENIS IN (${ALL_JENIS})
               AND KESIMPULAN = 'App'
             GROUP BY POINT_KEY
           ) latest_app ON sp.PKEY = latest_app.max_app_pkey
           LEFT JOIN alarm_active aa ON aa.point_key = sp.POINT_KEY
-          WHERE sp.JENIS IN ('PICKUP GI', 'PICKUP KP')
+          WHERE sp.JENIS IN (${ALL_JENIS})
             AND aa.id IS NULL
         `);
       }
@@ -113,7 +114,7 @@ async function runJob() {
           WHERE sp.POINT_KEY  = aa.point_key
             AND sp.PKEY       > aa.pkey
             AND sp.KESIMPULAN = 'Dis'
-            AND sp.JENIS IN ('PICKUP GI', 'PICKUP KP')
+            AND sp.JENIS IN ('PICKUP GI', 'PICKUP KP', 'RNR', 'TCS')
         )
       `);
       cleanedCount = cleaned.affectedRows || 0;

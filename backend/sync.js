@@ -25,8 +25,15 @@ const up3Cache = new Map();
 // Separator: titik (.)  — sesuai data SQL Server asli
 // Mengembalikan object parsed atau null bila bukan GI/KP Pickup
 //
+// Keyword yang relevan — hanya event ini yang diproses
+const RELEVANT_KEYWORDS = ['pickup', 'rnr', 'tcs'];
+
 function parseDesc(desc) {
   if (!desc || typeof desc !== 'string') return null;
+
+  // Filter awal: DESC harus mengandung salah satu keyword relevan
+  const descLower = desc.toLowerCase();
+  if (!RELEVANT_KEYWORDS.some(kw => descLower.includes(kw))) return null;
 
   // Strip karakter non-alfanumerik di depan (misal: '*', spasi, dll)
   const cleaned = desc.replace(/^[^A-Za-z0-9]+/, '');
@@ -64,7 +71,7 @@ function parseDesc(desc) {
     out.POINT_KEY = [out.GI, out.SUMBER_FEEDER, out.RELAY, out.PHASE]
       .map(v => (v ?? '')).join('|');
 
-  } else if (first.startsWith('Feeder_')) {
+  } else if (first.startsWith('Feeder_') && descLower.includes('pickup')) {
     // ── KP Pickup ──────────────────────────────────────────────
     out.JENIS        = 'PICKUP KP';
     out.FEEDER_MURNI = first.slice(7).trim() || null;  // strip "Feeder_"
@@ -76,8 +83,29 @@ function parseDesc(desc) {
     out.POINT_KEY = [out.FEEDER_MURNI, out.KEYPOINT, out.RELAY, out.PHASE]
       .map(v => (v ?? '')).join('|');
 
+  } else if (descLower.includes('rnr')) {
+    // ── RNR ────────────────────────────────────────────────────
+    // TODO: pisah GI/KP jika diperlukan nanti
+    out.JENIS        = 'RNR';
+    out.FEEDER_MURNI = first.startsWith('Feeder_') ? first.slice(7).trim() : null;
+    out.GI           = first.startsWith('GI-')     ? first.slice(3).trim() : null;
+    out.INDIKASI     = parts.slice(1, -1).join(sep) || null; // semua tengah
+
+    out.POINT_KEY = ['RNR', out.GI || out.FEEDER_MURNI, out.INDIKASI]
+      .map(v => (v ?? '')).join('|');
+
+  } else if (descLower.includes('tcs')) {
+    // ── TCS ────────────────────────────────────────────────────
+    // TODO: pisah GI/KP jika diperlukan nanti
+    out.JENIS        = 'TCS';
+    out.FEEDER_MURNI = first.startsWith('Feeder_') ? first.slice(7).trim() : null;
+    out.GI           = first.startsWith('GI-')     ? first.slice(3).trim() : null;
+    out.INDIKASI     = parts.slice(1, -1).join(sep) || null; // semua tengah
+
+    out.POINT_KEY = ['TCS', out.GI || out.FEEDER_MURNI, out.INDIKASI]
+      .map(v => (v ?? '')).join('|');
+
   } else {
-    // Format lain (misal: status PMT, CB, dll) — abaikan
     return null;
   }
 
