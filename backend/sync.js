@@ -28,7 +28,12 @@ const up3Cache = new Map();
 function parseDesc(desc) {
   if (!desc || typeof desc !== 'string') return null;
 
-  const parts = desc.split('.').map(s => s.trim());
+  // Strip karakter non-alfanumerik di depan (misal: '*', spasi, dll)
+  const cleaned = desc.replace(/^[^A-Za-z0-9]+/, '');
+
+  // Support separator titik '.' atau koma ','
+  const sep   = cleaned.includes(',') ? ',' : '.';
+  const parts = cleaned.split(sep).map(s => s.trim());
   if (parts.length < 3) return null;
 
   const first      = parts[0];
@@ -208,8 +213,10 @@ async function runJob() {
       cursorSeq          = lastSeq;
       state.lastSequence = lastSeq;
 
-      const firstTime = rows[0].TIME ? new Date(rows[0].TIME).toISOString().slice(0, 19).replace('T', ' ') : '?';
-      const lastTime  = rows[rows.length - 1].TIME ? new Date(rows[rows.length - 1].TIME).toISOString().slice(0, 19).replace('T', ' ') : '?';
+      // Tampilkan TIME asli dari SQL Server (UTC) di log
+      const fmtTime   = t => t ? String(t).slice(0, 19) : '?';
+      const firstTime = fmtTime(rows[0].TIME);
+      const lastTime  = fmtTime(rows[rows.length - 1].TIME);
 
       if (synced > 0) {
         console.log(`[Sync] ✚ ${synced}/${rows.length} baris | SEQ ${firstSeq}–${lastSeq} | ${firstTime} s/d ${lastTime}`);
