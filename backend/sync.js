@@ -177,6 +177,9 @@ async function runJob() {
 
         const id_up3 = await lookupUp3(parsed);
 
+        // Konversi UTC → WIB (+7 jam)
+        const timeWib = row.TIME ? new Date(new Date(row.TIME).getTime() + 7 * 3600 * 1000) : null;
+
         try {
           await db.query(
             `INSERT IGNORE INTO sync_prtspl
@@ -186,7 +189,7 @@ async function runJob() {
                 KESIMPULAN, POINT_KEY, ID_UP3)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
-              row.SEQUENCE, row.PKEY, row.TIME, row.DESC,
+              row.SEQUENCE, row.PKEY, timeWib, row.DESC,
               parsed.JENIS, parsed.GI, parsed.SUMBER_FEEDER,
               parsed.FEEDER_MURNI, parsed.KEYPOINT,
               parsed.INDIKASI, parsed.RELAY, parsed.PHASE,
