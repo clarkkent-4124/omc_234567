@@ -62,15 +62,15 @@ const NAV_ITEMS = [
       <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
     </svg>
   )},
-  { key: 'history', label: 'History', icon: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/>
-    </svg>
-  )},
   { key: 'laporan', label: 'Laporan', icon: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
       <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+    </svg>
+  )},
+  { key: 'history', label: 'History', icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/>
     </svg>
   )},
   { key: 'admin', label: 'Admin', adminOnly: true, icon: (
@@ -99,17 +99,22 @@ function Sidebar({ activePage, onNav, user, alarmCount, theme, toggleTheme, onLo
       zIndex: 100,
     }}>
       {/* Logo */}
-      <div style={{ padding: '20px 18px 16px', borderBottom: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 32, height: 32, borderRadius: 9, background: 'linear-gradient(135deg, #a855f7, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+      <div style={{ padding: '16px 18px 14px', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, #22d3ee, #3b82f6)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="white" stroke="white" strokeWidth="0.5" strokeLinejoin="round" />
             </svg>
           </div>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', letterSpacing: -0.3 }}>OMC</div>
-            <div style={{ fontSize: 10, color: 'var(--dim)', marginTop: 1 }}>Dashboard</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2 }}>OMC Dashboard</div>
+            <div style={{ fontSize: 11, color: 'var(--muted)', lineHeight: 1.2 }}>UP2D Jateng</div>
           </div>
+        </div>
+        {/* SCADA Connected */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--success)', flexShrink: 0 }} />
+          <span style={{ fontSize: 11, color: 'var(--muted)' }}>SCADA Connected</span>
         </div>
       </div>
 
@@ -124,8 +129,8 @@ function Sidebar({ activePage, onNav, user, alarmCount, theme, toggleTheme, onLo
               style={{
                 display: 'flex', alignItems: 'center', gap: 10,
                 padding: '9px 12px', borderRadius: 10, border: 'none',
-                background: active ? 'linear-gradient(135deg, #a855f7, #7c3aed)' : 'transparent',
-                color: active ? '#fff' : 'var(--muted)',
+                background: active ? 'var(--accent-bg)' : 'transparent',
+                color: active ? 'var(--accent)' : 'var(--muted)',
                 cursor: 'pointer', fontFamily: 'IBM Plex Sans, sans-serif',
                 fontSize: 13, fontWeight: active ? 700 : 500,
                 width: '100%', textAlign: 'left',

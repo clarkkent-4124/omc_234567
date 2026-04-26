@@ -3,11 +3,13 @@ import * as XLSX from 'xlsx';
 import { api } from '../services/api';
 
 // ── Helpers ──────────────────────────────────────────────────────
-const JENIS_LIST = ['PICKUP GI', 'PICKUP KP'];
+const JENIS_LIST = ['PICKUP GI', 'PICKUP KP', 'RNR', 'TCS'];
 
 const JENIS_STYLE = {
   'PICKUP GI': { color: 'var(--pickup)', bg: 'var(--pickup-bg)', border: 'var(--pickup-border)' },
   'PICKUP KP': { color: 'var(--rnr)',    bg: 'var(--rnr-bg)',    border: 'var(--rnr-border)'    },
+  'RNR':       { color: 'var(--ews)',    bg: 'var(--ews-bg)',    border: 'var(--ews-border)'    },
+  'TCS':       { color: 'var(--tcs)',    bg: 'var(--tcs-bg)',    border: 'var(--tcs-border)'    },
 };
 
 const MONTHS_ID = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
@@ -177,35 +179,29 @@ function TabKalender({ isDesktop = false }) {
         <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 }}>Filter</div>
 
         {isDesktop ? (
-          /* ── Desktop: 2 row ── */
-          <>
-            {/* Row 1: Bulan + Jenis */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
-              <div>
-                <label style={labelStyle}>Bulan</label>
-                <input type="month" value={bulan} onChange={e => setBulan(e.target.value)} style={inputStyle} />
-              </div>
-              <div>
-                <label style={labelStyle}>Jenis</label>
-                <select value={jenis} onChange={e => setJenis(e.target.value)} style={inputStyle}>
-                  {JENIS_LIST.map(j => <option key={j} value={j}>{j}</option>)}
-                </select>
-              </div>
+          /* ── Desktop: 1 row ── */
+          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+            <div style={{ width: 150 }}>
+              <label style={labelStyle}>Bulan</label>
+              <input type="month" value={bulan} onChange={e => setBulan(e.target.value)} style={inputStyle} />
             </div>
-            {/* Row 2: GI + Tombol */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'flex-end' }}>
-              <div>
-                <label style={labelStyle}>GI</label>
-                <select value={gi} onChange={e => setGi(e.target.value)} style={inputStyle}>
-                  <option value="">Semua GI</option>
-                  {giOptions.map(g => <option key={g} value={g}>{g}</option>)}
-                </select>
-              </div>
-              <div style={{ minWidth: 130 }}>
-                <ApplyBtn onClick={() => setApplied({ bulan, jenis, gi })} />
-              </div>
+            <div style={{ width: 140 }}>
+              <label style={labelStyle}>Jenis</label>
+              <select value={jenis} onChange={e => setJenis(e.target.value)} style={inputStyle}>
+                {JENIS_LIST.map(j => <option key={j} value={j}>{j}</option>)}
+              </select>
             </div>
-          </>
+            <div style={{ width: 200 }}>
+              <label style={labelStyle}>GI</label>
+              <select value={gi} onChange={e => setGi(e.target.value)} style={inputStyle}>
+                <option value="">Semua GI</option>
+                {giOptions.map(g => <option key={g} value={g}>{g}</option>)}
+              </select>
+            </div>
+            <div style={{ width: 130 }}>
+              <ApplyBtn onClick={() => setApplied({ bulan, jenis, gi })} />
+            </div>
+          </div>
         ) : (
           /* ── Mobile: stacked ── */
           <>
@@ -374,24 +370,22 @@ function TabPeralatan({ isDesktop = false }) {
         <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 }}>Filter</div>
 
         {isDesktop ? (
-          /* ── Desktop: 2 row ── */
-          <>
-            {/* Row 1: Bulan + Jenis */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
-              <div>
-                <label style={labelStyle}>Bulan</label>
-                <input type="month" value={bulan} onChange={e => setBulan(e.target.value)} style={inputStyle} />
-              </div>
-              <div>
-                <label style={labelStyle}>Jenis</label>
-                <select value={jenis} onChange={e => setJenis(e.target.value)} style={inputStyle}>
-                  {JENIS_LIST.map(j => <option key={j} value={j}>{j}</option>)}
-                </select>
-              </div>
+          /* ── Desktop: 1 row ── */
+          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+            <div style={{ width: 150 }}>
+              <label style={labelStyle}>Bulan</label>
+              <input type="month" value={bulan} onChange={e => setBulan(e.target.value)} style={inputStyle} />
             </div>
-            {/* Row 2: Tombol */}
-            <ApplyBtn onClick={() => setApplied({ bulan, jenis })} />
-          </>
+            <div style={{ width: 140 }}>
+              <label style={labelStyle}>Jenis</label>
+              <select value={jenis} onChange={e => setJenis(e.target.value)} style={inputStyle}>
+                {JENIS_LIST.map(j => <option key={j} value={j}>{j}</option>)}
+              </select>
+            </div>
+            <div style={{ width: 130 }}>
+              <ApplyBtn onClick={() => setApplied({ bulan, jenis })} />
+            </div>
+          </div>
         ) : (
           /* ── Mobile: stacked ── */
           <>

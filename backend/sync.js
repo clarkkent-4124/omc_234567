@@ -28,7 +28,7 @@ const up3Cache = new Map();
 //   PICKUP KP : Feeder_{feeder}.{keypoint}.{indikasi}.{relay}.{phase}.{kesimpulan}
 //
 // Keyword yang relevan — hanya event ini yang diproses
-const RELEVANT_KEYWORDS = ['pickup', 'rnr', 'tcs'];
+const RELEVANT_KEYWORDS = ['pickup', 'status relay proteksi', 'trip circuit supervision'];
 
 // ── Helper: deteksi jenis relay dari teks ────────────────────────
 // "over current" / "overcurrent" → OCR
@@ -81,7 +81,45 @@ function parseDesc(desc) {
     POINT_KEY:    null,
   };
 
-  if (first.startsWith('GI-')) {
+  if (descLower.includes('status relay proteksi')) {
+    // ── RNR ────────────────────────────────────────────────────
+    out.JENIS = 'RNR';
+    out.GI    = first.startsWith('GI-') ? first.slice(3).trim() : null;
+
+    if (sep === ',') {
+      const middle  = parts[1] || '';
+      const dashIdx = middle.indexOf(' - ');
+      const left    = dashIdx !== -1 ? middle.slice(0, dashIdx).trim() : middle;
+      const tokens  = left.split(/\s+/);
+      out.SUMBER_FEEDER = tokens[tokens.length - 1] || null;
+    }
+    out.INDIKASI   = 'RNR';
+    out.KESIMPULAN = out.KESIMPULAN === 'NotReady' ? 'App'
+                   : out.KESIMPULAN === 'Ready'    ? 'Dis'
+                   : out.KESIMPULAN;
+    out.POINT_KEY  = ['RNR', out.GI, out.SUMBER_FEEDER]
+      .map(v => (v ?? '')).join('|');
+
+  } else if (descLower.includes('trip circuit supervision')) {
+    // ── TCS ────────────────────────────────────────────────────
+    out.JENIS = 'TCS';
+    out.GI    = first.startsWith('GI-') ? first.slice(3).trim() : null;
+
+    if (sep === ',') {
+      const middle  = parts[1] || '';
+      const dashIdx = middle.indexOf(' - ');
+      const left    = dashIdx !== -1 ? middle.slice(0, dashIdx).trim() : middle;
+      const tokens  = left.split(/\s+/);
+      out.SUMBER_FEEDER = tokens[tokens.length - 1] || null;
+    }
+    out.INDIKASI   = 'TCS';
+    out.KESIMPULAN = out.KESIMPULAN === 'NotReady' ? 'App'
+                   : out.KESIMPULAN === 'Ready'    ? 'Dis'
+                   : out.KESIMPULAN;
+    out.POINT_KEY  = ['TCS', out.GI, out.SUMBER_FEEDER]
+      .map(v => (v ?? '')).join('|');
+
+  } else if (first.startsWith('GI-')) {
     // ── GI Pickup ──────────────────────────────────────────────
     out.JENIS = 'PICKUP GI';
     out.GI    = first.slice(3).trim() || null;  // strip "GI-"
@@ -157,28 +195,6 @@ function parseDesc(desc) {
     out.POINT_KEY = [out.FEEDER_MURNI, out.KEYPOINT, out.RELAY, out.PHASE]
       .map(v => (v ?? '')).join('|');
 
-  } else if (descLower.includes('rnr')) {
-    // ── RNR ────────────────────────────────────────────────────
-    // TODO: pisah GI/KP jika diperlukan nanti
-    out.JENIS        = 'RNR';
-    out.FEEDER_MURNI = first.startsWith('Feeder_') ? first.slice(7).trim() : null;
-    out.GI           = first.startsWith('GI-')     ? first.slice(3).trim() : null;
-    out.INDIKASI     = parts.slice(1, -1).join(sep) || null; // semua tengah
-
-    out.POINT_KEY = ['RNR', out.GI || out.FEEDER_MURNI, out.INDIKASI]
-      .map(v => (v ?? '')).join('|');
-
-  } else if (descLower.includes('tcs')) {
-    // ── TCS ────────────────────────────────────────────────────
-    // TODO: pisah GI/KP jika diperlukan nanti
-    out.JENIS        = 'TCS';
-    out.FEEDER_MURNI = first.startsWith('Feeder_') ? first.slice(7).trim() : null;
-    out.GI           = first.startsWith('GI-')     ? first.slice(3).trim() : null;
-    out.INDIKASI     = parts.slice(1, -1).join(sep) || null; // semua tengah
-
-    out.POINT_KEY = ['TCS', out.GI || out.FEEDER_MURNI, out.INDIKASI]
-      .map(v => (v ?? '')).join('|');
-
   } else {
     return null;
   }
@@ -190,15 +206,14 @@ function parseDesc(desc) {
 async function lookupUp3(parsed) {
   if (!parsed.JENIS) return null;
 
-  const cacheKey = parsed.JENIS === 'PICKUP GI'
-    ? `GI:${parsed.GI}`
-    : `KP:${parsed.FEEDER_MURNI}`;
+  const isGIBased = ['PICKUP GI', 'RNR', 'TCS'].includes(parsed.JENIS);
+  const cacheKey  = isGIBased ? `GI:${parsed.GI}` : `KP:${parsed.FEEDER_MURNI}`;
 
   if (up3Cache.has(cacheKey)) return up3Cache.get(cacheKey);
 
   let apjId = null;
   try {
-    if (parsed.JENIS === 'PICKUP GI' && parsed.GI) {
+    if (isGIBased && parsed.GI) {
       const [[row]] = await db.query(
         `SELECT APJ_ID FROM dc_gardu_induk
          WHERE TRIM(GARDU_INDUK_NAMA) = ? LIMIT 1`,
@@ -327,7 +342,7 @@ async function runJob() {
       if (synced > 0) {
         console.log(`[Sync] ✚ ${synced}/${rows.length} baris | SEQ ${firstSeq}–${lastSeq} | ${firstTime} s/d ${lastTime}`);
       } else {
-        console.log(`[Sync] ○ ${rows.length} dilewati (bukan GI/KP) | SEQ ${firstSeq}–${lastSeq} | ${firstTime} s/d ${lastTime}`);
+        console.log(`[Sync] ○ ${rows.length} dilewati (tidak relevan) | SEQ ${firstSeq}–${lastSeq} | ${firstTime} s/d ${lastTime}`);
       }
 
       // Batch < BATCH_SIZE → sudah habis, tidak perlu loop lagi

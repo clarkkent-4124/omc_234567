@@ -11,7 +11,6 @@ export default function FilterCard({ dari, sampai, setDari, setSampai, onApply, 
       flexDirection: 'column',
       justifyContent: 'center',
     }}>
-      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 10 }}>Filter Tanggal</div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 10, color: 'var(--muted)', marginBottom: 4 }}>Dari</div>
@@ -55,7 +54,7 @@ export default function FilterCard({ dari, sampai, setDari, setSampai, onApply, 
             Memuat data...
           </>
         ) : (
-          'Terapkan'
+          'Terapkan Filter'
         )}
       </button>
     </div>

@@ -57,6 +57,12 @@ const POINT_TEXT_SQL = `
         NULLIF(TRIM(sp.RELAY),''),
         NULLIF(TRIM(sp.PHASE),'')
       ))
+    WHEN sp.JENIS IN ('RNR', 'TCS') THEN
+      TRIM(CONCAT_WS(' ',
+        NULLIF(TRIM(sp.GI),''),
+        NULLIF(TRIM(sp.SUMBER_FEEDER),''),
+        NULLIF(TRIM(sp.INDIKASI),'')
+      ))
     ELSE
       TRIM(CONCAT_WS(' ',
         NULLIF(TRIM(sp.FEEDER_MURNI),''),
@@ -95,16 +101,18 @@ app.get('/api/dashboard/summary', async (req, res) => {
       SELECT sp.JENIS AS jenis, COUNT(*) AS cnt
       FROM alarm_active aa
       JOIN sync_prtspl sp ON sp.PKEY = aa.pkey
-      WHERE sp.JENIS IN ('PICKUP GI', 'PICKUP KP')
+      WHERE sp.JENIS IN ('PICKUP GI', 'PICKUP KP', 'RNR', 'TCS')
       GROUP BY sp.JENIS
     `);
 
-    const result = { pickup_gi: 0, pickup_kp: 0, total: 0 };
+    const result = { pickup_gi: 0, pickup_kp: 0, rnr: 0, tcs: 0, total: 0 };
     rows.forEach(r => {
       if (r.jenis === 'PICKUP GI') result.pickup_gi = r.cnt;
       if (r.jenis === 'PICKUP KP') result.pickup_kp = r.cnt;
+      if (r.jenis === 'RNR')       result.rnr       = r.cnt;
+      if (r.jenis === 'TCS')       result.tcs       = r.cnt;
     });
-    result.total = result.pickup_gi + result.pickup_kp;
+    result.total = result.pickup_gi + result.pickup_kp + result.rnr + result.tcs;
 
     res.json(result);
   } catch (err) {
@@ -159,12 +167,42 @@ app.get('/api/dashboard/donut', async (req, res) => {
       FROM sync_prtspl sp
       INNER JOIN alarm_ack aa ON aa.pkey = sp.PKEY AND aa.kesimpulan = 'valid'
       WHERE sp.KESIMPULAN = 'App'
-        AND sp.JENIS IN ('PICKUP GI', 'PICKUP KP')
+        AND sp.JENIS IN ('PICKUP GI', 'PICKUP KP', 'RNR', 'TCS')
         ${clause}
       GROUP BY sp.JENIS
     `, [...params]);
 
     res.json(rows.map(r => ({ jenis: r.jenis, count: r.count })));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/dashboard/up3 ───────────────────────────────────────
+app.get('/api/dashboard/up3', async (req, res) => {
+  try {
+    const { from, to } = req.query;
+    const { clause, params } = dateRange(from, to);
+
+    const [rows] = await db.query(`
+      SELECT
+        COALESCE(NULLIF(TRIM(da.APJ_NAMA),''), '—') AS nama_up3,
+        COUNT(*)                                       AS total,
+        SUM(CASE WHEN sp.JENIS = 'PICKUP GI' THEN 1 ELSE 0 END) AS pickup_gi,
+        SUM(CASE WHEN sp.JENIS = 'PICKUP KP' THEN 1 ELSE 0 END) AS pickup_kp,
+        SUM(CASE WHEN sp.JENIS = 'RNR'       THEN 1 ELSE 0 END) AS rnr,
+        SUM(CASE WHEN sp.JENIS = 'TCS'       THEN 1 ELSE 0 END) AS tcs
+      FROM sync_prtspl sp
+      INNER JOIN alarm_ack aa ON aa.pkey = sp.PKEY AND aa.kesimpulan = 'valid'
+      LEFT JOIN dc_apj da ON da.APJ_ID = sp.ID_UP3
+      WHERE sp.KESIMPULAN = 'App'
+        AND sp.JENIS IN ('PICKUP GI', 'PICKUP KP', 'RNR', 'TCS')
+        ${clause}
+      GROUP BY da.APJ_ID, da.APJ_NAMA
+      ORDER BY total DESC
+    `, [...params]);
+
+    res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -181,11 +219,13 @@ app.get('/api/dashboard/gi-bermasalah', async (req, res) => {
         COALESCE(NULLIF(TRIM(sp.GI),''), NULLIF(TRIM(sp.FEEDER_MURNI),''), '—') AS nama_gi,
         COUNT(*)                                                                  AS total,
         SUM(CASE WHEN sp.JENIS = 'PICKUP GI' THEN 1 ELSE 0 END)                AS pickup_gi,
-        SUM(CASE WHEN sp.JENIS = 'PICKUP KP' THEN 1 ELSE 0 END)                AS pickup_kp
+        SUM(CASE WHEN sp.JENIS = 'PICKUP KP' THEN 1 ELSE 0 END)                AS pickup_kp,
+        SUM(CASE WHEN sp.JENIS = 'RNR'       THEN 1 ELSE 0 END)                AS rnr,
+        SUM(CASE WHEN sp.JENIS = 'TCS'       THEN 1 ELSE 0 END)                AS tcs
       FROM sync_prtspl sp
       INNER JOIN alarm_ack aa ON aa.pkey = sp.PKEY AND aa.kesimpulan = 'valid'
       WHERE sp.KESIMPULAN = 'App'
-        AND sp.JENIS IN ('PICKUP GI', 'PICKUP KP')
+        AND sp.JENIS IN ('PICKUP GI', 'PICKUP KP', 'RNR', 'TCS')
         ${clause}
       GROUP BY COALESCE(NULLIF(TRIM(sp.GI),''), NULLIF(TRIM(sp.FEEDER_MURNI),''))
       ORDER BY total DESC
@@ -209,13 +249,14 @@ app.get('/api/alarms/history', async (req, res) => {
     const { from, to, jenis, gi, search, page = 1, limit = 20 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
-    let where = `WHERE sp.KESIMPULAN = 'App' AND sp.JENIS IN ('PICKUP GI', 'PICKUP KP')`;
+    let where = `WHERE sp.KESIMPULAN = 'App' AND sp.JENIS IN ('PICKUP GI', 'PICKUP KP', 'RNR', 'TCS')`;
     const params = [];
 
     if (from)   { where += ' AND sp.TIME >= ?'; params.push(from + ' 00:00:00'); }
     if (to)     { where += ' AND sp.TIME <= ?'; params.push(to   + ' 23:59:59'); }
-    if (jenis === 'PICKUP GI') { where += ` AND sp.JENIS = 'PICKUP GI'`; }
-    if (jenis === 'PICKUP KP') { where += ` AND sp.JENIS = 'PICKUP KP'`; }
+    if (jenis && ['PICKUP GI', 'PICKUP KP', 'RNR', 'TCS'].includes(jenis)) {
+      where += ' AND sp.JENIS = ?'; params.push(jenis);
+    }
     if (gi)     { where += ' AND sp.GI = ?'; params.push(gi); }
     if (search) {
       where += ' AND (sp.GI LIKE ? OR sp.FEEDER_MURNI LIKE ? OR sp.KEYPOINT LIKE ?)';
@@ -270,11 +311,13 @@ app.get('/api/alarms', async (req, res) => {
   try {
     const { jenis, gi, search, limit = 500 } = req.query;
 
-    let where = `WHERE sp.JENIS IN ('PICKUP GI', 'PICKUP KP')`;
+    const ALL_JENIS_SQL = `'PICKUP GI', 'PICKUP KP', 'RNR', 'TCS'`;
+    let where = `WHERE sp.JENIS IN (${ALL_JENIS_SQL})`;
     const params = [];
 
-    if (jenis === 'PICKUP GI') { where += ` AND sp.JENIS = 'PICKUP GI'`; }
-    if (jenis === 'PICKUP KP') { where += ` AND sp.JENIS = 'PICKUP KP'`; }
+    if (jenis && ['PICKUP GI', 'PICKUP KP', 'RNR', 'TCS'].includes(jenis)) {
+      where += ` AND sp.JENIS = ?`; params.push(jenis);
+    }
     if (gi)     { where += ' AND sp.GI = ?';     params.push(gi); }
     if (search) {
       where += ' AND (sp.GI LIKE ? OR sp.FEEDER_MURNI LIKE ? OR sp.KEYPOINT LIKE ?)';
@@ -337,7 +380,7 @@ app.get('/api/alarms/terpantau', async (req, res) => {
       FROM sync_prtspl sp
       JOIN alarm_ack aa ON aa.pkey = sp.PKEY
       WHERE sp.KESIMPULAN = 'App'
-        AND sp.JENIS IN ('PICKUP GI', 'PICKUP KP')
+        AND sp.JENIS IN ('PICKUP GI', 'PICKUP KP', 'RNR', 'TCS')
     `;
     const params = [];
 
@@ -346,8 +389,9 @@ app.get('/api/alarms/terpantau', async (req, res) => {
     }
     if (from) { sql += ' AND aa.ack_at >= ?'; params.push(from + ' 00:00:00'); }
     if (to)   { sql += ' AND aa.ack_at <= ?'; params.push(to   + ' 23:59:59'); }
-    if (jenis === 'PICKUP GI') { sql += ` AND sp.JENIS = 'PICKUP GI'`; }
-    if (jenis === 'PICKUP KP') { sql += ` AND sp.JENIS = 'PICKUP KP'`; }
+    if (jenis && ['PICKUP GI', 'PICKUP KP', 'RNR', 'TCS'].includes(jenis)) {
+      sql += ' AND sp.JENIS = ?'; params.push(jenis);
+    }
     if (gi)   { sql += ' AND sp.GI = ?'; params.push(gi); }
 
     sql += ' ORDER BY aa.ack_at DESC';
@@ -494,24 +538,46 @@ app.get('/api/laporan/kalender', async (req, res) => {
     let where = `
       WHERE sp.KESIMPULAN = 'App'
         AND YEAR(sp.TIME) = ? AND MONTH(sp.TIME) = ?
-        AND sp.JENIS IN ('PICKUP GI', 'PICKUP KP')
+        AND sp.JENIS IN ('PICKUP GI', 'PICKUP KP', 'RNR', 'TCS')
     `;
     const params = [parseInt(tahun), parseInt(bln)];
 
-    if (jenis === 'PICKUP GI') { where += ` AND sp.JENIS = 'PICKUP GI'`; }
-    if (jenis === 'PICKUP KP') { where += ` AND sp.JENIS = 'PICKUP KP'`; }
+    if (jenis && ['PICKUP GI', 'PICKUP KP', 'RNR', 'TCS'].includes(jenis)) {
+      where += ' AND sp.JENIS = ?'; params.push(jenis);
+    }
     if (gi) { where += ' AND sp.GI = ?'; params.push(gi); }
 
+    const KALENDER_POINT_SQL = `
+      CASE
+        WHEN sp.JENIS = 'PICKUP GI' THEN
+          TRIM(CONCAT_WS(' ',
+            NULLIF(TRIM(sp.GI),''),
+            NULLIF(TRIM(sp.SUMBER_FEEDER),''),
+            NULLIF(TRIM(sp.RELAY),'')
+          ))
+        WHEN sp.JENIS IN ('RNR', 'TCS') THEN
+          TRIM(CONCAT_WS(' ',
+            NULLIF(TRIM(sp.GI),''),
+            NULLIF(TRIM(sp.SUMBER_FEEDER),''),
+            NULLIF(TRIM(sp.INDIKASI),'')
+          ))
+        ELSE
+          TRIM(CONCAT_WS(' ',
+            NULLIF(TRIM(sp.KEYPOINT),''),
+            NULLIF(TRIM(sp.INDIKASI),'')
+          ))
+      END
+    `;
     const [rows] = await db.query(`
       SELECT
-        ${POINT_TEXT_SQL}                                          AS peralatan,
+        ${KALENDER_POINT_SQL}                                      AS peralatan,
         COALESCE(NULLIF(TRIM(sp.GI),''), NULLIF(TRIM(sp.FEEDER_MURNI),''), '—') AS gi_name,
         DAY(sp.TIME)                                              AS hari,
         COUNT(*)                                                   AS jumlah
       FROM sync_prtspl sp
       INNER JOIN alarm_ack aa ON aa.pkey = sp.PKEY AND aa.kesimpulan = 'valid'
       ${where}
-      GROUP BY ${POINT_TEXT_SQL}, gi_name, DAY(sp.TIME)
+      GROUP BY ${KALENDER_POINT_SQL}, gi_name, DAY(sp.TIME)
       ORDER BY peralatan, hari
     `, params);
 
@@ -531,12 +597,13 @@ app.get('/api/laporan/peralatan', async (req, res) => {
     let where = `
       WHERE sp.KESIMPULAN = 'App'
         AND YEAR(sp.TIME) = ? AND MONTH(sp.TIME) = ?
-        AND sp.JENIS IN ('PICKUP GI', 'PICKUP KP')
+        AND sp.JENIS IN ('PICKUP GI', 'PICKUP KP', 'RNR', 'TCS')
     `;
     const params = [parseInt(tahun), parseInt(bln)];
 
-    if (jenis === 'PICKUP GI') { where += ` AND sp.JENIS = 'PICKUP GI'`; }
-    if (jenis === 'PICKUP KP') { where += ` AND sp.JENIS = 'PICKUP KP'`; }
+    if (jenis && ['PICKUP GI', 'PICKUP KP', 'RNR', 'TCS'].includes(jenis)) {
+      where += ' AND sp.JENIS = ?'; params.push(jenis);
+    }
 
     const [rows] = await db.query(`
       SELECT
@@ -861,6 +928,17 @@ app.post('/api/upload/alarm-sound', alarmSoundUpload.single('file'), (req, res) 
 
 app.get('/api/upload/alarm-sound/check', (req, res) => {
   res.json({ exists: fs.existsSync(path.join(UPLOADS_DIR, 'alarm.wav')) });
+});
+
+app.delete('/api/upload/alarm-sound', (req, res) => {
+  const filePath = path.join(UPLOADS_DIR, 'alarm.wav');
+  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'File tidak ada.' });
+  try {
+    fs.unlinkSync(filePath);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ════════════════════════════════════════════════════════════════

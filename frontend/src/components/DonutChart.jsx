@@ -5,6 +5,8 @@ import { api } from '../services/api';
 const JENIS_CONFIG = [
   { key: 'PICKUP GI', name: 'PICKUP GI', color: '#ef4444' },
   { key: 'PICKUP KP', name: 'PICKUP KP', color: '#3b82f6' },
+  { key: 'RNR',       name: 'RNR',       color: '#f59e0b' },
+  { key: 'TCS',       name: 'TCS',       color: '#a855f7' },
 ];
 
 function formatDateLabel(isoStr) {
@@ -60,9 +62,9 @@ export default function DonutChart({ dari, sampai, filterKey, applying, onFetchD
   );
 
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '16px 14px' }}>
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '16px 14px', height: '100%', boxSizing: 'border-box' }}>
       <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 12 }}>
-        Distribusi per jenis: <span style={{ color: 'var(--accent)' }}>{dateLabel}</span>
+        Alarm per Jenis: <span style={{ color: 'var(--accent)' }}>{dateLabel}</span>
       </div>
 
       {(loading || applying) ? (

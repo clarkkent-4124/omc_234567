@@ -1148,6 +1148,7 @@ function PengaturanTab({ user, isDesktop = false }) {
 function AlarmSoundCard() {
   const [exists,    setExists]    = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [deleting,  setDeleting]  = useState(false);
   const [result,    setResult]    = useState('');
   const [error,     setError]     = useState('');
 
@@ -1176,6 +1177,20 @@ function AlarmSoundCard() {
       const a = new Audio(`${BACKEND_URL}/uploads/alarm.wav?t=${Date.now()}`);
       a.play().catch(() => setError('Autoplay diblokir browser. Coba klik play manual.'));
     } catch {}
+  }
+
+  async function handleDelete() {
+    if (!window.confirm('Hapus file suara alarm?')) return;
+    setDeleting(true); setError(''); setResult('');
+    try {
+      await api.deleteAlarmSound();
+      setExists(false);
+      setResult('File suara alarm dihapus.');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDeleting(false);
+    }
   }
 
   return (
@@ -1215,18 +1230,36 @@ function AlarmSoundCard() {
             <input type="file" accept=".wav,audio/wav" onChange={handleFile} disabled={uploading} style={{ display: 'none' }} />
           </label>
           {exists && (
-            <button
-              onClick={handlePreview}
-              style={{
-                padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(34,197,94,0.4)',
-                background: 'rgba(34,197,94,0.1)', color: '#22c55e',
-                fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                display: 'flex', alignItems: 'center', gap: 6,
-              }}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-              Test
-            </button>
+            <>
+              <button
+                onClick={handlePreview}
+                style={{
+                  padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(34,197,94,0.4)',
+                  background: 'rgba(34,197,94,0.1)', color: '#22c55e',
+                  fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                  display: 'flex', alignItems: 'center', gap: 6,
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                Test
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                style={{
+                  padding: '9px 14px', borderRadius: 10, border: '1px solid rgba(239,68,68,0.4)',
+                  background: 'rgba(239,68,68,0.1)', color: '#ef4444',
+                  fontSize: 12, fontWeight: 600, cursor: deleting ? 'not-allowed' : 'pointer',
+                  fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6,
+                  opacity: deleting ? 0.6 : 1,
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>
+                </svg>
+                {deleting ? '...' : 'Hapus'}
+              </button>
+            </>
           )}
         </div>
         {result && <div style={{ fontSize: 12, color: '#22c55e', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 8, padding: '7px 12px' }}>{result}</div>}

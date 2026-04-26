@@ -6,10 +6,12 @@ import AlarmDetailSheet from './AlarmDetailSheet';
 const TYPE_STYLE = {
   'PICKUP GI': { colorVar: 'var(--pickup)', bgVar: 'var(--pickup-bg)' },
   'PICKUP KP': { colorVar: 'var(--rnr)',    bgVar: 'var(--rnr-bg)'    },
+  'RNR':       { colorVar: 'var(--ews)',    bgVar: 'var(--ews-bg)'    },
+  'TCS':       { colorVar: 'var(--tcs)',    bgVar: 'var(--tcs-bg)'    },
   OTHER:       { colorVar: 'var(--muted)',  bgVar: 'var(--surface2)'  },
 };
 
-const CHIPS = ['Semua', 'PICKUP GI', 'PICKUP KP'];
+const CHIPS = ['Semua', 'PICKUP GI', 'PICKUP KP', 'RNR', 'TCS'];
 const PAGE_SIZE = 8;
 
 function formatDateTime(iso) {

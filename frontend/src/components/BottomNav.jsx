@@ -63,7 +63,7 @@ const TAB_ADMIN = {
 
 // ── Tab list per role ─────────────────────────────────────────────
 function getTabsByRole(role) {
-  const base = [TAB_DASHBOARD, TAB_ALARM, TAB_HISTORY, TAB_LAPORAN];
+  const base = [TAB_DASHBOARD, TAB_ALARM, TAB_LAPORAN, TAB_HISTORY];
   if (role === 'operator') return [...base, TAB_TINDAK];
   if (role === 'admin')    return [...base, TAB_ADMIN];
   return base; // belum login

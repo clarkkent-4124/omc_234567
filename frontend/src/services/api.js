@@ -43,6 +43,7 @@ export const api = {
   getDonut:             (params = {}) => get('/dashboard/donut',           params),
   getTrend:             (params = {}) => get('/dashboard/trend',           params),
   getDashboardGI:       (params = {}) => get('/dashboard/gi-bermasalah',   params),
+  getDashboardUP3:      (params = {}) => get('/dashboard/up3',             params),
 
   // Alarms
   getAlarms:            (params = {}) => get('/alarms',                    params),   // live (alarm_active)
@@ -82,7 +83,8 @@ export const api = {
   importPrtspl:         (rows)        => post('/import/prtspl',            { rows }),
 
   // Alarm sound
-  checkAlarmSound: () => get('/upload/alarm-sound/check'),
+  checkAlarmSound:  () => get('/upload/alarm-sound/check'),
+  deleteAlarmSound: () => fetch(BASE + '/upload/alarm-sound', { method: 'DELETE' }).then(r => r.json().then(d => { if (!r.ok) throw new Error(d.error || 'Gagal.'); return d; })),
   uploadAlarmSound: (file) => {
     const form = new FormData();
     form.append('file', file);

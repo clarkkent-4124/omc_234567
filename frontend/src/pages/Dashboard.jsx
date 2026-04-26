@@ -3,16 +3,25 @@ import SummaryCards from '../components/SummaryCards';
 import FilterCard from '../components/FilterCard';
 import DonutChart from '../components/DonutChart';
 import BarChart24h from '../components/BarChart24h';
+import BarChartUP3 from '../components/BarChartUP3';
 import GIList from '../components/GIList';
 
-const today = new Date().toISOString().split('T')[0];
-const FETCH_COUNT = 3; // DonutChart + BarChart24h + GIList
+// Default: bulan penuh (1 s/d akhir bulan ini)
+// Pakai format lokal — toISOString() bisa mundur 1 hari di timezone UTC+7
+function localDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+const _now        = new Date();
+const defaultFrom = localDate(new Date(_now.getFullYear(), _now.getMonth(), 1));
+const defaultTo   = localDate(new Date(_now.getFullYear(), _now.getMonth() + 1, 0));
+
+const FETCH_COUNT = 3; // DonutChart + BarChartUP3/BarChart24h + GIList
 
 export default function Dashboard({ onCardClick, onGIClick, isDesktop = false }) {
-  const [dari, setDari]         = useState(today);
-  const [sampai, setSampai]     = useState(today);
-  const [appliedDari, setAppliedDari]   = useState(today);
-  const [appliedSampai, setAppliedSampai] = useState(today);
+  const [dari, setDari]         = useState(defaultFrom);
+  const [sampai, setSampai]     = useState(defaultTo);
+  const [appliedDari, setAppliedDari]   = useState(defaultFrom);
+  const [appliedSampai, setAppliedSampai] = useState(defaultTo);
   const [applying, setApplying] = useState(false);
   const [filterKey, setFilterKey] = useState(0); // naik setiap klik Terapkan → paksa useEffect anak
 
@@ -49,10 +58,10 @@ export default function Dashboard({ onCardClick, onGIClick, isDesktop = false })
           <FilterCard dari={dari} sampai={sampai} setDari={setDari} setSampai={setSampai} onApply={handleApply} applying={applying} />
         </div>
 
-        {/* Baris 2: Donut (kiri) + Bar chart (kanan) */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: 20, alignItems: 'start' }}>
-          <DonutChart  {...filterProps} />
-          <BarChart24h {...filterProps} />
+        {/* Baris 2: Donut (kiri) + UP3 chart (kanan) */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: 20, alignItems: 'stretch' }}>
+          <DonutChart   {...filterProps} />
+          <BarChartUP3  {...filterProps} />
         </div>
 
         {/* Baris 3: GI List full width */}

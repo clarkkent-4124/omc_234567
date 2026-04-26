@@ -26,11 +26,13 @@ function isAlarmSoundPlaying() {
   return !!_activeAudio;
 }
 
-const TYPE_CHIPS = ['Semua', 'PICKUP GI', 'PICKUP KP'];
+const TYPE_CHIPS = ['Semua', 'PICKUP GI', 'PICKUP KP', 'RNR', 'TCS'];
 
 const TYPE_STYLE = {
   'PICKUP GI': { colorVar: 'var(--pickup)', bgVar: 'var(--pickup-bg)', borderVar: 'var(--pickup-border)' },
   'PICKUP KP': { colorVar: 'var(--rnr)',    bgVar: 'var(--rnr-bg)',    borderVar: 'var(--rnr-border)'    },
+  'RNR':       { colorVar: 'var(--ews)',    bgVar: 'var(--ews-bg)',    borderVar: 'var(--ews-border)'    },
+  'TCS':       { colorVar: 'var(--tcs)',    bgVar: 'var(--tcs-bg)',    borderVar: 'var(--tcs-border)'    },
   OTHER:       { colorVar: 'var(--muted)',  bgVar: 'var(--surface2)',  borderVar: 'var(--border)'        },
 };
 
@@ -227,6 +229,8 @@ function TabLive({ user, onRefresh, isDesktop }) {
   const counts = {
     'PICKUP GI': alarms.filter(a => a.jenis === 'PICKUP GI').length,
     'PICKUP KP': alarms.filter(a => a.jenis === 'PICKUP KP').length,
+    'RNR':       alarms.filter(a => a.jenis === 'RNR').length,
+    'TCS':       alarms.filter(a => a.jenis === 'TCS').length,
   };
   const displayed = activeChip === 'Semua' ? alarms : alarms.filter(a => a.jenis === activeChip);
 
@@ -275,7 +279,7 @@ function TabLive({ user, onRefresh, isDesktop }) {
               <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
                 <rect x="6" y="6" width="12" height="12" rx="2"/>
               </svg>
-              Stop Bunyi
+              Bunyi Alarm
             </button>
           )}
         </div>
