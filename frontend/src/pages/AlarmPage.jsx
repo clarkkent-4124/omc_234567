@@ -121,6 +121,13 @@ function KBadge({ value }) {
 
 // ── Filter tanggal ────────────────────────────────────────────────
 function DateFilter({ label, dari, setDari, sampai, setSampai, onApply }) {
+  const [loading, setLoading] = useState(false);
+
+  async function handleApply() {
+    setLoading(true);
+    try { await onApply(); } finally { setLoading(false); }
+  }
+
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', marginBottom: 12 }}>
       <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>
@@ -133,9 +140,22 @@ function DateFilter({ label, dari, setDari, sampai, setSampai, onApply }) {
         <input type="date" value={sampai} onChange={e => setSampai(e.target.value)}
           style={{ flex: 1, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 10px', color: 'var(--text)', fontSize: 13, outline: 'none', fontFamily: 'inherit' }} />
       </div>
-      <button onClick={onApply}
-        style={{ width: '100%', background: 'linear-gradient(135deg, #22d3ee, #3b82f6)', border: 'none', borderRadius: 8, padding: '8px 0', color: '#0a0f1a', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
-        Terapkan
+      <button
+        onClick={handleApply}
+        disabled={loading}
+        style={{
+          width: '100%', border: 'none', borderRadius: 8, padding: '8px 0',
+          background: loading ? 'rgba(34,211,238,0.4)' : 'linear-gradient(135deg, #22d3ee, #3b82f6)',
+          color: '#0a0f1a', fontWeight: 700, fontSize: 12,
+          cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          transition: 'background 0.2s',
+        }}
+      >
+        {loading
+          ? <><span className="spinner" style={{ borderTopColor: '#0a0f1a', borderColor: 'rgba(10,15,26,0.3)', width: 12, height: 12 }} /> Memuat...</>
+          : 'Terapkan'
+        }
       </button>
     </div>
   );
@@ -144,7 +164,7 @@ function DateFilter({ label, dari, setDari, sampai, setSampai, onApply }) {
 // ════════════════════════════════════════════════════════════════
 // TAB LIVE
 // ════════════════════════════════════════════════════════════════
-function TabLive({ user, onRefresh }) {
+function TabLive({ user, onRefresh, isDesktop }) {
   const [activeChip,    setActiveChip]    = useState('Semua');
   const [alarms,        setAlarms]        = useState([]);
   const [loading,       setLoading]       = useState(true);
@@ -317,6 +337,7 @@ function TabLive({ user, onRefresh }) {
         <AlarmDetailSheet
           alarm={selectedAlarm}
           user={user}
+          isDesktop={isDesktop}
           onClose={() => setSelectedAlarm(null)}
           onAck={() => { fetchAlarms(); onRefresh(); }}
         />
@@ -328,7 +349,7 @@ function TabLive({ user, onRefresh }) {
 // ════════════════════════════════════════════════════════════════
 // TAB RESPONDED / INVALID  (reusable)
 // ════════════════════════════════════════════════════════════════
-function TabAcked({ user, refreshKey, kesimpulan }) {
+function TabAcked({ user, refreshKey, kesimpulan, isDesktop }) {
   const today        = new Date().toISOString().split('T')[0];
   const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
 
@@ -359,7 +380,7 @@ function TabAcked({ user, refreshKey, kesimpulan }) {
 
   useEffect(() => { setLoading(true); fetchAlarms(); }, [fetchAlarms]);
 
-  function handleApply() {
+  async function handleApply() {
     setAppliedDari(dari);
     setAppliedSampai(sampai);
     setFilterKey(k => k + 1);
@@ -372,7 +393,7 @@ function TabAcked({ user, refreshKey, kesimpulan }) {
   return (
     <>
       <DateFilter
-        label={isValid ? 'Filter Waktu Responded' : 'Filter Waktu Invalid'}
+        label={isValid ? 'Filter Waktu Validasi' : 'Filter Waktu Invalid'}
         dari={dari} setDari={setDari}
         sampai={sampai} setSampai={setSampai}
         onApply={handleApply}
@@ -393,14 +414,14 @@ function TabAcked({ user, refreshKey, kesimpulan }) {
 
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '28px 1fr 100px', padding: '8px 14px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)' }}>
-          {['#', 'GI / Point', 'Respond'].map(h => (
+          {['#', 'GI / Point', 'Validasi'].map(h => (
             <div key={h} style={{ fontSize: 10, fontWeight: 700, color: 'var(--dim)', letterSpacing: 0.5, textTransform: 'uppercase' }}>{h}</div>
           ))}
         </div>
 
         {loading ? <TableSkeleton cols="28px 1fr 100px" /> : displayed.length === 0 ? (
           <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--dim)', fontSize: 13 }}>
-            {isValid ? 'Belum ada alarm responded' : 'Belum ada alarm invalid'}
+            {isValid ? 'Belum ada alarm valid' : 'Belum ada alarm invalid'}
           </div>
         ) : displayed.map((alarm, i) => {
           const s = TYPE_STYLE[alarm.jenis] || TYPE_STYLE.OTHER;
@@ -439,6 +460,7 @@ function TabAcked({ user, refreshKey, kesimpulan }) {
         <AlarmDetailSheet
           alarm={{ ...selectedAlarm, ack_at: selectedAlarm.ack_at, ack_by: selectedAlarm.ack_by, kesimpulan: selectedAlarm.kesimpulan, keterangan: selectedAlarm.keterangan }}
           user={user}
+          isDesktop={isDesktop}
           onClose={() => setSelectedAlarm(null)}
           onAck={fetchAlarms}
         />
@@ -450,14 +472,14 @@ function TabAcked({ user, refreshKey, kesimpulan }) {
 // ════════════════════════════════════════════════════════════════
 // MAIN PAGE
 // ════════════════════════════════════════════════════════════════
-export default function AlarmPage({ user }) {
+export default function AlarmPage({ user, isDesktop = false }) {
   const [activeTab, setActiveTab] = useState('live');
   const [ackedKey,  setAckedKey]  = useState(0);
 
   const TABS = [
-    { key: 'live',      label: 'Live',      dot: true,  icon: null },
-    { key: 'responded', label: 'Responded', dot: false, color: '#22c55e' },
-    { key: 'invalid',   label: 'Invalid',   dot: false, color: '#ef4444' },
+    { key: 'live',      label: 'Live',    dot: true,  icon: null },
+    { key: 'responded', label: 'Valid',   dot: false, color: '#22c55e' },
+    { key: 'invalid',   label: 'Invalid', dot: false, color: '#ef4444' },
   ];
 
   return (
@@ -517,9 +539,9 @@ export default function AlarmPage({ user }) {
         })}
       </div>
 
-      {activeTab === 'live'      && <TabLive  user={user} onRefresh={() => setAckedKey(k => k + 1)} />}
-      {activeTab === 'responded' && <TabAcked user={user} refreshKey={ackedKey} kesimpulan="valid"   />}
-      {activeTab === 'invalid'   && <TabAcked user={user} refreshKey={ackedKey} kesimpulan="invalid" />}
+      {activeTab === 'live'      && <TabLive  user={user} isDesktop={isDesktop} onRefresh={() => setAckedKey(k => k + 1)} />}
+      {activeTab === 'responded' && <TabAcked user={user} isDesktop={isDesktop} refreshKey={ackedKey} kesimpulan="valid"   />}
+      {activeTab === 'invalid'   && <TabAcked user={user} isDesktop={isDesktop} refreshKey={ackedKey} kesimpulan="invalid" />}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import * as XLSX from 'xlsx';
-import { api } from '../services/api';
+import { api, BACKEND_URL } from '../services/api';
 
 // ════════════════════════════════════════════════════════════════
 // SHARED UI COMPONENTS
@@ -824,7 +824,7 @@ function MasterPointStatus() {
 // ════════════════════════════════════════════════════════════════
 // PENGATURAN TAB (existing settings)
 // ════════════════════════════════════════════════════════════════
-function PengaturanTab({ user }) {
+function PengaturanTab({ user, isDesktop = false }) {
   const [form, setForm] = useState({
     trigger_duration: '', scheduler_interval: '', sla_warning: '', sla_breach: '',
   });
@@ -951,8 +951,14 @@ function PengaturanTab({ user }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <DbStatusCard />
-      <SchedulerStatusCard intervalValue={form.scheduler_interval} onIntervalChange={v => setField('scheduler_interval', v)} />
+      {/* Status cards: 2-kolom di desktop, 1-kolom di mobile */}
+      <div style={isDesktop
+        ? { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, alignItems: 'start' }
+        : { display: 'flex', flexDirection: 'column', gap: 16 }
+      }>
+        <DbStatusCard />
+        <SchedulerStatusCard intervalValue={form.scheduler_interval} onIntervalChange={v => setField('scheduler_interval', v)} />
+      </div>
 
       <form
         onSubmit={handleSave}
@@ -1205,7 +1211,7 @@ function AlarmSoundCard() {
 
   function handlePreview() {
     try {
-      const a = new Audio(`http://localhost:5000/uploads/alarm.wav?t=${Date.now()}`);
+      const a = new Audio(`${BACKEND_URL}/uploads/alarm.wav?t=${Date.now()}`);
       a.play().catch(() => setError('Autoplay diblokir browser. Coba klik play manual.'));
     } catch {}
   }
@@ -1419,7 +1425,7 @@ function UploadTab() {
 // ════════════════════════════════════════════════════════════════
 // MAIN — AdminPage
 // ════════════════════════════════════════════════════════════════
-export default function AdminPage({ user }) {
+export default function AdminPage({ user, isDesktop = false }) {
   const [activeTab, setActiveTab] = useState('pengaturan');
 
   const TABS = [
@@ -1429,7 +1435,7 @@ export default function AdminPage({ user }) {
   ];
 
   return (
-    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: isDesktop ? 900 : undefined }}>
 
       {/* Page header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 4 }}>
@@ -1465,7 +1471,7 @@ export default function AdminPage({ user }) {
       </div>
 
       {/* Tab content */}
-      {activeTab === 'pengaturan' && <PengaturanTab user={user} />}
+      {activeTab === 'pengaturan' && <PengaturanTab user={user} isDesktop={isDesktop} />}
       {activeTab === 'upload'     && <UploadTab />}
       {activeTab === 'master'     && <MasterPointStatus />}
 

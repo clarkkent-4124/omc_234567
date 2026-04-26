@@ -172,6 +172,29 @@ select {
 }
 .fade-in { animation: fadeIn 0.25s ease; }
 
+/* Modal centered (desktop) — transform sudah include translate(-50%,-50%) */
+@keyframes fadeInModal {
+  from { opacity: 0; transform: translate(-50%, calc(-50% + 10px)); }
+  to   { opacity: 1; transform: translate(-50%, -50%); }
+}
+.modal-fade-in { animation: fadeInModal 0.22s ease; }
+
+/* ── Tooltip ─────────────────────────────────────────────────────── */
+.tooltip-wrap { position: relative; }
+.tooltip-wrap .tooltip-text {
+  visibility: hidden; opacity: 0;
+  position: absolute; bottom: calc(100% + 6px); left: 0;
+  background: #1e293b; color: #f1f5f9;
+  font-size: 11px; font-weight: 500; line-height: 1.4;
+  padding: 5px 9px; border-radius: 7px;
+  white-space: pre-wrap; word-break: break-word;
+  max-width: 240px; min-width: 120px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+  z-index: 999; pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+.tooltip-wrap:hover .tooltip-text { visibility: visible; opacity: 1; }
+
 @keyframes live-blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.6; }

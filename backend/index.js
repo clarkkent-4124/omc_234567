@@ -292,9 +292,9 @@ app.get('/api/alarms', async (req, res) => {
         sp.GI, sp.SUMBER_FEEDER, sp.FEEDER_MURNI,
         sp.KEYPOINT, sp.INDIKASI, sp.RELAY, sp.PHASE,
         sp.POINT_KEY,
-        aa_a.status,
-        aa_a.ack_at,
-        aa_a.ack_by,
+        'ACTIVE'                             AS status,
+        aa_k.ack_at,
+        aa_k.ack_by,
         aa_k.kesimpulan,
         aa_k.catatan                         AS keterangan,
         TIMESTAMPDIFF(SECOND, sp.TIME, NOW()) AS durasi_detik

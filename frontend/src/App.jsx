@@ -217,7 +217,7 @@ export default function App() {
   const isDesktop = useIsDesktop();
   const [activePage, setActivePage] = useState('dashboard');
   const [historyFilter, setHistoryFilter] = useState('Semua');
-  const [theme, setTheme] = useState(() => localStorage.getItem('omc-theme') || 'dark');
+  const [theme, setTheme] = useState(() => localStorage.getItem('omc-theme') || 'light');
   const [user, setUser]   = useState(() => {
     try { return JSON.parse(sessionStorage.getItem('omc-user')) || null; } catch { return null; }
   });
@@ -286,11 +286,11 @@ export default function App() {
           onGIClick={() => { setHistoryFilter('Semua'); setActivePage('history'); }}
         />
       )}
-      {activePage === 'alarm'   && <AlarmPage user={user} />}
-      {activePage === 'history' && <HistoryPage initialFilter={historyFilter} />}
-      {activePage === 'laporan' && <LaporanPage />}
+      {activePage === 'alarm'   && <AlarmPage user={user} isDesktop={isDesktop} />}
+      {activePage === 'history' && <HistoryPage initialFilter={historyFilter} isDesktop={isDesktop} />}
+      {activePage === 'laporan' && <LaporanPage isDesktop={isDesktop} />}
       {activePage === 'tindak'  && user?.role === 'operator' && <PLACEHOLDER_PAGE />}
-      {activePage === 'admin'   && user?.role === 'admin'    && <AdminPage user={user} />}
+      {activePage === 'admin'   && user?.role === 'admin'    && <AdminPage user={user} isDesktop={isDesktop} />}
     </>
   );
 

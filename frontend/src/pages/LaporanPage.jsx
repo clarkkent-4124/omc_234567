@@ -77,18 +77,28 @@ const DownloadIcon = () => (
 
 // ── Apply button ─────────────────────────────────────────────────
 function ApplyBtn({ onClick }) {
+  const [loading, setLoading] = useState(false);
+  async function handle() {
+    setLoading(true);
+    try { await onClick(); } finally { setLoading(false); }
+  }
   return (
     <button
-      onClick={onClick}
+      onClick={handle}
+      disabled={loading}
       style={{
         width: '100%', border: 'none', borderRadius: 8,
         padding: '9px 0', fontWeight: 700, fontSize: 13,
-        cursor: 'pointer', fontFamily: 'inherit',
-        background: 'linear-gradient(135deg, #22d3ee, #3b82f6)',
-        color: '#0a0f1a',
+        cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+        background: loading ? 'rgba(34,211,238,0.4)' : 'linear-gradient(135deg, #22d3ee, #3b82f6)',
+        color: '#0a0f1a', transition: 'background 0.2s',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
       }}
     >
-      Tampilkan
+      {loading
+        ? <><span className="spinner" style={{ borderTopColor: '#0a0f1a', borderColor: 'rgba(10,15,26,0.3)', width: 13, height: 13 }} /> Memuat...</>
+        : 'Tampilkan'
+      }
     </button>
   );
 }
@@ -107,7 +117,7 @@ function SkeletonRows({ n = 5 }) {
 // ════════════════════════════════════════════════════════════════
 // TAB 1 — Kalender Pickup
 // ════════════════════════════════════════════════════════════════
-function TabKalender() {
+function TabKalender({ isDesktop = false }) {
   const [bulan,    setBulan]    = useState(defaultBulan);
   const [jenis,    setJenis]    = useState('PICKUP GI');
   const [gi,       setGi]       = useState('');
@@ -166,30 +176,61 @@ function TabKalender() {
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '14px 14px 12px' }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 }}>Filter</div>
 
-        {/* Bulan + Jenis */}
-        <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
-          <div style={{ flex: 1 }}>
-            <label style={labelStyle}>Bulan</label>
-            <input type="month" value={bulan} onChange={e => setBulan(e.target.value)} style={inputStyle} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label style={labelStyle}>Jenis</label>
-            <select value={jenis} onChange={e => setJenis(e.target.value)} style={inputStyle}>
-              {JENIS_LIST.map(j => <option key={j} value={j}>{j}</option>)}
-            </select>
-          </div>
-        </div>
-
-        {/* GI */}
-        <div style={{ marginBottom: 14 }}>
-          <label style={labelStyle}>GI</label>
-          <select value={gi} onChange={e => setGi(e.target.value)} style={inputStyle}>
-            <option value="">Semua GI</option>
-            {giOptions.map(g => <option key={g} value={g}>{g}</option>)}
-          </select>
-        </div>
-
-        <ApplyBtn onClick={() => setApplied({ bulan, jenis, gi })} />
+        {isDesktop ? (
+          /* ── Desktop: 2 row ── */
+          <>
+            {/* Row 1: Bulan + Jenis */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+              <div>
+                <label style={labelStyle}>Bulan</label>
+                <input type="month" value={bulan} onChange={e => setBulan(e.target.value)} style={inputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>Jenis</label>
+                <select value={jenis} onChange={e => setJenis(e.target.value)} style={inputStyle}>
+                  {JENIS_LIST.map(j => <option key={j} value={j}>{j}</option>)}
+                </select>
+              </div>
+            </div>
+            {/* Row 2: GI + Tombol */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'flex-end' }}>
+              <div>
+                <label style={labelStyle}>GI</label>
+                <select value={gi} onChange={e => setGi(e.target.value)} style={inputStyle}>
+                  <option value="">Semua GI</option>
+                  {giOptions.map(g => <option key={g} value={g}>{g}</option>)}
+                </select>
+              </div>
+              <div style={{ minWidth: 130 }}>
+                <ApplyBtn onClick={() => setApplied({ bulan, jenis, gi })} />
+              </div>
+            </div>
+          </>
+        ) : (
+          /* ── Mobile: stacked ── */
+          <>
+            <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+              <div style={{ flex: 1 }}>
+                <label style={labelStyle}>Bulan</label>
+                <input type="month" value={bulan} onChange={e => setBulan(e.target.value)} style={inputStyle} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={labelStyle}>Jenis</label>
+                <select value={jenis} onChange={e => setJenis(e.target.value)} style={inputStyle}>
+                  {JENIS_LIST.map(j => <option key={j} value={j}>{j}</option>)}
+                </select>
+              </div>
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>GI</label>
+              <select value={gi} onChange={e => setGi(e.target.value)} style={inputStyle}>
+                <option value="">Semua GI</option>
+                {giOptions.map(g => <option key={g} value={g}>{g}</option>)}
+              </select>
+            </div>
+            <ApplyBtn onClick={() => setApplied({ bulan, jenis, gi })} />
+          </>
+        )}
       </div>
 
       {/* ── Calendar table card ── */}
@@ -249,11 +290,14 @@ function TabKalender() {
                     <tr key={ri}>
                       {/* Sticky peralatan cell */}
                       <td style={{ ...tdStyle, position: 'sticky', left: 0, background: rowBg, zIndex: 1, minWidth: 150, maxWidth: 150, borderRight: '2px solid var(--border)' }}>
-                        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {row.peralatan}
-                        </div>
-                        <div style={{ fontSize: 10, color: 'var(--muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {row.gi_name}
+                        <div className="tooltip-wrap">
+                          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {row.peralatan}
+                          </div>
+                          <div style={{ fontSize: 10, color: 'var(--muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {row.gi_name}
+                          </div>
+                          <span className="tooltip-text">{row.peralatan}{row.gi_name ? `\n${row.gi_name}` : ''}</span>
                         </div>
                       </td>
 
@@ -290,7 +334,7 @@ function TabKalender() {
 // ════════════════════════════════════════════════════════════════
 // TAB 2 — Laporan Tiap Peralatan (per UP3)
 // ════════════════════════════════════════════════════════════════
-function TabPeralatan() {
+function TabPeralatan({ isDesktop = false }) {
   const [bulan,   setBulan]   = useState(defaultBulan);
   const [jenis,   setJenis]   = useState('PICKUP GI');
   const [rows,    setRows]    = useState([]);
@@ -328,19 +372,44 @@ function TabPeralatan() {
       {/* ── Filter card ── */}
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '14px 14px 12px' }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 }}>Filter</div>
-        <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
-          <div style={{ flex: 1 }}>
-            <label style={labelStyle}>Bulan</label>
-            <input type="month" value={bulan} onChange={e => setBulan(e.target.value)} style={inputStyle} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label style={labelStyle}>Jenis</label>
-            <select value={jenis} onChange={e => setJenis(e.target.value)} style={inputStyle}>
-              {JENIS_LIST.map(j => <option key={j} value={j}>{j}</option>)}
-            </select>
-          </div>
-        </div>
-        <ApplyBtn onClick={() => setApplied({ bulan, jenis })} />
+
+        {isDesktop ? (
+          /* ── Desktop: 2 row ── */
+          <>
+            {/* Row 1: Bulan + Jenis */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+              <div>
+                <label style={labelStyle}>Bulan</label>
+                <input type="month" value={bulan} onChange={e => setBulan(e.target.value)} style={inputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>Jenis</label>
+                <select value={jenis} onChange={e => setJenis(e.target.value)} style={inputStyle}>
+                  {JENIS_LIST.map(j => <option key={j} value={j}>{j}</option>)}
+                </select>
+              </div>
+            </div>
+            {/* Row 2: Tombol */}
+            <ApplyBtn onClick={() => setApplied({ bulan, jenis })} />
+          </>
+        ) : (
+          /* ── Mobile: stacked ── */
+          <>
+            <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+              <div style={{ flex: 1 }}>
+                <label style={labelStyle}>Bulan</label>
+                <input type="month" value={bulan} onChange={e => setBulan(e.target.value)} style={inputStyle} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={labelStyle}>Jenis</label>
+                <select value={jenis} onChange={e => setJenis(e.target.value)} style={inputStyle}>
+                  {JENIS_LIST.map(j => <option key={j} value={j}>{j}</option>)}
+                </select>
+              </div>
+            </div>
+            <ApplyBtn onClick={() => setApplied({ bulan, jenis })} />
+          </>
+        )}
       </div>
 
       {/* ── Summary strip ── */}
@@ -439,7 +508,7 @@ function TabPeralatan() {
 // ════════════════════════════════════════════════════════════════
 // MAIN PAGE
 // ════════════════════════════════════════════════════════════════
-export default function LaporanPage() {
+export default function LaporanPage({ isDesktop = false }) {
   const [activeTab, setActiveTab] = useState('kalender');
 
   return (
@@ -495,8 +564,8 @@ export default function LaporanPage() {
       </div>
 
       {/* Tab content */}
-      {activeTab === 'kalender'  && <TabKalender />}
-      {activeTab === 'peralatan' && <TabPeralatan />}
+      {activeTab === 'kalender'  && <TabKalender  isDesktop={isDesktop} />}
+      {activeTab === 'peralatan' && <TabPeralatan isDesktop={isDesktop} />}
     </div>
   );
 }

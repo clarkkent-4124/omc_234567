@@ -19,11 +19,13 @@ const up3Cache = new Map();
 
 // ── Parse DESC ─────────────────────────────────────────────────────
 //
-// Format GI Pickup :  GI-<GI>.<SUMBER_FEEDER>.<INDIKASI>.<RELAY>.<PHASE>.<KESIMPULAN>
-// Format KP Pickup :  Feeder_<FEEDER_MURNI>.<KEYPOINT>.<INDIKASI>.<RELAY>.<PHASE>.<KESIMPULAN>
+// Format comma (3 bagian) — dari SQL Server:
+//   PICKUP GI : *GI-{gi},Relay {gi} {relay_no} - {indikasi},{kesimpulan}
+//   PICKUP KP : *Feeder_{feeder},Indikasi {indikasi} {rec}_{keypoint},{kesimpulan}
 //
-// Separator: titik (.)  — sesuai data SQL Server asli
-// Mengembalikan object parsed atau null bila bukan GI/KP Pickup
+// Format titik (banyak bagian) — legacy / fallback:
+//   PICKUP GI : GI-{gi}.{relay}.{indikasi}.{relay}.{phase}.{kesimpulan}
+//   PICKUP KP : Feeder_{feeder}.{keypoint}.{indikasi}.{relay}.{phase}.{kesimpulan}
 //
 // Keyword yang relevan — hanya event ini yang diproses
 const RELEVANT_KEYWORDS = ['pickup', 'rnr', 'tcs'];
@@ -61,12 +63,31 @@ function parseDesc(desc) {
 
   if (first.startsWith('GI-')) {
     // ── GI Pickup ──────────────────────────────────────────────
-    out.JENIS         = 'PICKUP GI';
-    out.GI            = first.slice(3).trim() || null;  // strip "GI-"
-    out.SUMBER_FEEDER = parts[1] || null;
-    out.INDIKASI      = parts[2] || null;
-    out.RELAY         = parts[3] || null;
-    out.PHASE         = parts[4] || null;
+    out.JENIS = 'PICKUP GI';
+    out.GI    = first.slice(3).trim() || null;  // strip "GI-"
+
+    if (sep === ',') {
+      // Format: "Relay {gi_name} {relay_no} - {indikasi}"
+      // Contoh: "Relay Secang 01 - Pickup Over Current Fault"
+      const middle   = parts[1] || '';
+      const dashIdx  = middle.indexOf(' - ');
+      if (dashIdx !== -1) {
+        const left   = middle.slice(0, dashIdx).trim();       // "Relay Secang 01"
+        const right  = middle.slice(dashIdx + 3).trim();      // "Pickup Over Current Fault"
+        const tokens = left.split(/\s+/);
+        out.SUMBER_FEEDER = tokens[tokens.length - 1] || null; // "01"
+        out.INDIKASI      = right || null;
+      } else {
+        // Fallback: tidak ada " - ", ambil seluruh middle
+        out.SUMBER_FEEDER = middle || null;
+      }
+    } else {
+      // Format titik: GI-{gi}.{relay}.{indikasi}.{relay}.{phase}.{kesimpulan}
+      out.SUMBER_FEEDER = parts[1] || null;
+      out.INDIKASI      = parts[2] || null;
+      out.RELAY         = parts[3] || null;
+      out.PHASE         = parts[4] || null;
+    }
 
     out.POINT_KEY = [out.GI, out.SUMBER_FEEDER, out.RELAY, out.PHASE]
       .map(v => (v ?? '')).join('|');
@@ -75,10 +96,37 @@ function parseDesc(desc) {
     // ── KP Pickup ──────────────────────────────────────────────
     out.JENIS        = 'PICKUP KP';
     out.FEEDER_MURNI = first.slice(7).trim() || null;  // strip "Feeder_"
-    out.KEYPOINT     = parts[1] || null;
-    out.INDIKASI     = parts[2] || null;
-    out.RELAY        = parts[3] || null;
-    out.PHASE        = parts[4] || null;
+
+    if (sep === ',') {
+      // Format: "Indikasi {indikasi} {rec}_{keypoint}"
+      // Contoh: "Indikasi Pickup Fasa C REC_SMU01_S3-17-10"
+      //         "Indikasi Pickup Over Current SMU07_S3-121C-206"
+      let middle = (parts[1] || '').trim();
+
+      // Strip prefix "Indikasi " jika ada
+      if (middle.toLowerCase().startsWith('indikasi ')) {
+        middle = middle.slice(9).trim();
+      }
+
+      // Token terakhir (dipisah spasi) yang mengandung '_' = {something}_{keypoint}
+      const tokens    = middle.split(/\s+/);
+      const lastToken = tokens[tokens.length - 1] || '';
+
+      if (lastToken.includes('_')) {
+        const uParts  = lastToken.split('_');
+        out.KEYPOINT  = uParts[uParts.length - 1] || null;  // "S3-17-10"
+        out.INDIKASI  = tokens.slice(0, -1).join(' ') || null; // "Pickup Fasa C"
+      } else {
+        // Fallback: tidak ada underscore, pakai seluruh middle
+        out.INDIKASI = middle || null;
+      }
+    } else {
+      // Format titik: Feeder_{feeder}.{keypoint}.{indikasi}.{relay}.{phase}.{kesimpulan}
+      out.KEYPOINT = parts[1] || null;
+      out.INDIKASI = parts[2] || null;
+      out.RELAY    = parts[3] || null;
+      out.PHASE    = parts[4] || null;
+    }
 
     out.POINT_KEY = [out.FEEDER_MURNI, out.KEYPOINT, out.RELAY, out.PHASE]
       .map(v => (v ?? '')).join('|');
@@ -190,6 +238,8 @@ async function runJob() {
             SEQUENCE, PKEY, TIME, [DESC]
           FROM prtspl
           WHERE SEQUENCE > @lastSeq
+            AND [DESC] NOT LIKE '%manual%'
+            AND [DESC] NOT LIKE '%put in scan%'
           ORDER BY SEQUENCE ASC
         `);
 
@@ -210,9 +260,6 @@ async function runJob() {
 
         const id_up3 = await lookupUp3(parsed);
 
-        // Konversi UTC → WIB (+7 jam)
-        const timeWib = row.TIME ? new Date(new Date(row.TIME).getTime() + 7 * 3600 * 1000) : null;
-
         try {
           await db.query(
             `INSERT IGNORE INTO sync_prtspl
@@ -222,7 +269,7 @@ async function runJob() {
                 KESIMPULAN, POINT_KEY, ID_UP3)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
-              row.SEQUENCE, row.PKEY, timeWib, row.DESC,
+              row.SEQUENCE, row.PKEY, row.TIME, row.DESC,
               parsed.JENIS, parsed.GI, parsed.SUMBER_FEEDER,
               parsed.FEEDER_MURNI, parsed.KEYPOINT,
               parsed.INDIKASI, parsed.RELAY, parsed.PHASE,

@@ -20,7 +20,7 @@ function formatDateTime(iso) {
   });
 }
 
-export default function AlarmDetail({ initialFilter, onBack, showBackButton = true }) {
+export default function AlarmDetail({ initialFilter, onBack, showBackButton = true, isDesktop = false }) {
   const today        = new Date().toISOString().split('T')[0];
   const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
 
@@ -98,7 +98,7 @@ export default function AlarmDetail({ initialFilter, onBack, showBackButton = tr
       const rows = (res.data || []).map((a, i) => ({
         'No':          i + 1,
         'Waktu Alarm': a.datum_2 ? new Date(a.datum_2).toLocaleString('id-ID') : '-',
-        'Waktu Ack':   a.ack_at  ? new Date(a.ack_at).toLocaleString('id-ID')  : '-',
+        'Waktu Validasi': a.ack_at ? new Date(a.ack_at).toLocaleString('id-ID') : '-',
         'Status':      a.status,
         'Jenis':       a.jenis,
         'GI / Feeder': a.path1_text || '-',
@@ -407,6 +407,7 @@ export default function AlarmDetail({ initialFilter, onBack, showBackButton = tr
       {selectedAlarm && (
         <AlarmDetailSheet
           alarm={selectedAlarm}
+          isDesktop={isDesktop}
           onClose={() => setSelectedAlarm(null)}
         />
       )}
