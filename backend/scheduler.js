@@ -51,59 +51,84 @@ async function runJob() {
 
       const ALL_JENIS = `'PICKUP GI', 'PICKUP KP', 'RNR', 'TCS'`;
 
+      // ── Grouping key: POINTPID jika tersedia, POINT_KEY sebagai fallback ──
+      // COALESCE(NULLIF(TRIM(sp.POINTPID),''), sp.POINT_KEY) = effective key
+      //
+      // ── POINT_KEY-only fallback (simpan sebagai komentar jika perlu kembali): ──
+      // GROUP BY POINT_KEY  &  JOIN alarm_active aa ON aa.point_key = sp.POINT_KEY
+
       if (trigger_duration_enabled) {
-        // Mode GLITCH FILTER: App harus jadi latest event DAN bertahan > X detik
+        // Mode GLITCH FILTER: latest event per POINTPID (atau POINT_KEY) harus 'App'
+        // DAN sudah bertahan > trigger_duration detik
         [toTrigger] = await db.query(`
-          SELECT sp.PKEY, sp.TIME AS alarm_start, sp.POINT_KEY
+          SELECT sp.PKEY, sp.TIME AS alarm_start, sp.POINT_KEY, sp.POINTPID,
+            COALESCE(NULLIF(TRIM(sp.POINTPID),''), sp.POINT_KEY) AS eff_key
           FROM sync_prtspl sp
           INNER JOIN (
-            SELECT POINT_KEY, MAX(PKEY) AS max_pkey
+            SELECT
+              COALESCE(NULLIF(TRIM(POINTPID),''), POINT_KEY) AS eff_key,
+              MAX(PKEY) AS max_pkey
             FROM sync_prtspl
             WHERE JENIS IN (${ALL_JENIS})
-            GROUP BY POINT_KEY
-          ) latest ON sp.PKEY = latest.max_pkey
-          LEFT JOIN alarm_active aa ON aa.point_key = sp.POINT_KEY
+            GROUP BY COALESCE(NULLIF(TRIM(POINTPID),''), POINT_KEY)
+          ) latest ON COALESCE(NULLIF(TRIM(sp.POINTPID),''), sp.POINT_KEY) = latest.eff_key
+            AND sp.PKEY = latest.max_pkey
+          LEFT JOIN alarm_active aa ON (
+            (sp.POINTPID IS NOT NULL AND sp.POINTPID != '' AND aa.pointpid = sp.POINTPID)
+            OR (COALESCE(sp.POINTPID,'') = '' AND aa.point_key = sp.POINT_KEY)
+          )
           WHERE sp.KESIMPULAN = 'App'
             AND sp.JENIS IN (${ALL_JENIS})
             AND TIMESTAMPDIFF(SECOND, sp.TIME, NOW()) > ?
             AND aa.id IS NULL
         `, [trigger_duration]);
       } else {
-        // Mode LANGSUNG: trigger setiap ada App terbaru per POINT_KEY
+        // Mode LANGSUNG: trigger setiap ada App terbaru per effective key
         [toTrigger] = await db.query(`
-          SELECT sp.PKEY, sp.TIME AS alarm_start, sp.POINT_KEY
+          SELECT sp.PKEY, sp.TIME AS alarm_start, sp.POINT_KEY, sp.POINTPID,
+            COALESCE(NULLIF(TRIM(sp.POINTPID),''), sp.POINT_KEY) AS eff_key
           FROM sync_prtspl sp
           INNER JOIN (
-            SELECT POINT_KEY, MAX(PKEY) AS max_app_pkey
+            SELECT
+              COALESCE(NULLIF(TRIM(POINTPID),''), POINT_KEY) AS eff_key,
+              MAX(PKEY) AS max_app_pkey
             FROM sync_prtspl
             WHERE JENIS IN (${ALL_JENIS})
               AND KESIMPULAN = 'App'
-            GROUP BY POINT_KEY
-          ) latest_app ON sp.PKEY = latest_app.max_app_pkey
-          LEFT JOIN alarm_active aa ON aa.point_key = sp.POINT_KEY
+            GROUP BY COALESCE(NULLIF(TRIM(POINTPID),''), POINT_KEY)
+          ) latest_app ON COALESCE(NULLIF(TRIM(sp.POINTPID),''), sp.POINT_KEY) = latest_app.eff_key
+            AND sp.PKEY = latest_app.max_app_pkey
+          LEFT JOIN alarm_active aa ON (
+            (sp.POINTPID IS NOT NULL AND sp.POINTPID != '' AND aa.pointpid = sp.POINTPID)
+            OR (COALESCE(sp.POINTPID,'') = '' AND aa.point_key = sp.POINT_KEY)
+          )
           WHERE sp.JENIS IN (${ALL_JENIS})
             AND aa.id IS NULL
         `);
       }
 
       for (const alarm of toTrigger) {
+        const logKey = alarm.POINTPID || alarm.POINT_KEY;
         try {
           await db.query(
-            `INSERT INTO alarm_active (pkey, point_key, triggered_at)
-             VALUES (?, ?, NOW())`,
-            [alarm.PKEY, alarm.POINT_KEY]
+            `INSERT INTO alarm_active (pkey, point_key, pointpid, triggered_at)
+             VALUES (?, ?, ?, NOW())`,
+            [alarm.PKEY, alarm.POINT_KEY, alarm.POINTPID || null]
           );
           triggered++;
-          console.log(`[Scheduler] ✚ Triggered: ${alarm.POINT_KEY}`);
+          console.log(`[Scheduler] ✚ Triggered: ${logKey}`);
         } catch {
-          // UNIQUE constraint — point_key sudah ada, skip
+          // UNIQUE constraint — sudah ada, skip
         }
       }
     }
 
     // ── CLEANUP ──────────────────────────────────────────────────
     // Hapus alarm_active yang relay-nya sudah recovery (Dis datang setelah App)
-    // Bisa di-nonaktifkan jika ingin semua alarm tetap sampai diack operator
+    // Gunakan POINTPID jika tersedia, fallback ke POINT_KEY
+    //
+    // ── POINT_KEY-only fallback (simpan sebagai komentar jika perlu kembali): ──
+    // WHERE sp.POINT_KEY = aa.point_key AND sp.PKEY > aa.pkey AND sp.KESIMPULAN='Dis'
     let cleanedCount = 0;
 
     if (cleanup_enabled) {
@@ -111,7 +136,10 @@ async function runJob() {
         DELETE aa FROM alarm_active aa
         WHERE EXISTS (
           SELECT 1 FROM sync_prtspl sp
-          WHERE sp.POINT_KEY  = aa.point_key
+          WHERE (
+            (aa.pointpid IS NOT NULL AND aa.pointpid != '' AND sp.POINTPID = aa.pointpid)
+            OR (COALESCE(aa.pointpid,'') = '' AND sp.POINT_KEY = aa.point_key)
+          )
             AND sp.PKEY       > aa.pkey
             AND sp.KESIMPULAN = 'Dis'
             AND sp.JENIS IN ('PICKUP GI', 'PICKUP KP', 'RNR', 'TCS')

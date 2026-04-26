@@ -199,8 +199,8 @@ export default function AlarmDetailSheet({ alarm: initialAlarm, onClose, user, o
                 {alarm?.point_text || '—'}
               </div>
               <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
-                {alarm?.path1_text}
-                {(alarm?.SUMBER_FEEDER || alarm?.KEYPOINT) ? ` · ${alarm.SUMBER_FEEDER || alarm.KEYPOINT}` : ''}
+                {[alarm?.APJ_NAMA, alarm?.FEEDER_MURNI, alarm?.RELAY, alarm?.PHASE]
+                  .filter(Boolean).join(' · ') || '—'}
               </div>
             </div>
             <button
@@ -375,21 +375,15 @@ export default function AlarmDetailSheet({ alarm: initialAlarm, onClose, user, o
             ))}
           </div>
 
-          {/* ── Informasi Lokasi ── */}
-          <SectionTitle>Informasi Lokasi</SectionTitle>
-          <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px 14px', marginBottom: 16 }}>
-            <InfoRow label="GI / Feeder"   value={alarm?.path1_text} />
-            <InfoRow label="Sumber/KP"     value={alarm?.SUMBER_FEEDER || alarm?.KEYPOINT} />
-            <InfoRow label="POINT_KEY"     value={alarm?.POINT_KEY} mono />
-          </div>
-
           {/* ── Detail Teknis ── */}
           <SectionTitle>Detail Teknis</SectionTitle>
           <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px 14px', marginBottom: 16 }}>
-            <InfoRow label="Indikasi"   value={alarm?.point_text} />
-            <InfoRow label="Relay"      value={alarm?.RELAY}   mono />
-            <InfoRow label="Phase"      value={alarm?.PHASE}   mono />
-            <InfoRow label="SCADA"      value={alarm?.KESIMPULAN} />
+            <InfoRow label="GI / Feeder" value={alarm?.GI || alarm?.FEEDER_MURNI} />
+            <InfoRow label="Sumber"      value={alarm?.SUMBER_FEEDER || alarm?.KEYPOINT} />
+            <InfoRow label="Indikasi"    value={alarm?.INDIKASI} />
+            <InfoRow label="Relay"       value={alarm?.RELAY}  mono />
+            <InfoRow label="Phase"       value={alarm?.PHASE}  mono />
+            <InfoRow label="SCADA"       value={alarm?.KESIMPULAN} />
           </div>
 
           {/* ── Riwayat ── */}

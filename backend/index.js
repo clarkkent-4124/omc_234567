@@ -291,7 +291,8 @@ app.get('/api/alarms', async (req, res) => {
         ${POINT_TEXT_SQL}                    AS point_text,
         sp.GI, sp.SUMBER_FEEDER, sp.FEEDER_MURNI,
         sp.KEYPOINT, sp.INDIKASI, sp.RELAY, sp.PHASE,
-        sp.POINT_KEY,
+        sp.POINT_KEY, sp.POINTPID,
+        da.APJ_NAMA,
         'ACTIVE'                             AS status,
         aa_k.ack_at,
         aa_k.ack_by,
@@ -301,6 +302,7 @@ app.get('/api/alarms', async (req, res) => {
       FROM alarm_active aa_a
       JOIN sync_prtspl sp ON sp.PKEY = aa_a.pkey
       LEFT JOIN alarm_ack aa_k ON aa_k.pkey = sp.PKEY
+      LEFT JOIN dc_apj da ON da.APJ_ID = sp.ID_UP3
       ${where}
       ORDER BY sp.TIME DESC
       LIMIT ?
@@ -372,7 +374,8 @@ app.get('/api/alarms/:id', async (req, res) => {
         ${POINT_TEXT_SQL}                    AS point_text,
         sp.GI, sp.SUMBER_FEEDER, sp.FEEDER_MURNI,
         sp.KEYPOINT, sp.INDIKASI, sp.RELAY, sp.PHASE,
-        sp.KESIMPULAN, sp.POINT_KEY,
+        sp.KESIMPULAN, sp.POINT_KEY, sp.POINTPID,
+        da.APJ_NAMA,
         CASE WHEN aa_a.id IS NOT NULL THEN 'ACTIVE' ELSE 'CLEARED' END AS status,
         aa_a.status                          AS alarm_status,
         aa_k.ack_at, aa_k.ack_by,
@@ -382,25 +385,29 @@ app.get('/api/alarms/:id', async (req, res) => {
       FROM sync_prtspl sp
       LEFT JOIN alarm_active aa_a ON aa_a.pkey = sp.PKEY
       LEFT JOIN alarm_ack aa_k ON aa_k.pkey = sp.PKEY
+      LEFT JOIN dc_apj da ON da.APJ_ID = sp.ID_UP3
       WHERE sp.PKEY = ?
     `, [id]);
 
     if (!alarm) return res.status(404).json({ error: 'Alarm tidak ditemukan.' });
 
-    // Riwayat: event lain pada POINT_KEY yang sama
-    const [riwayat] = await db.query(`
-      SELECT
-        sp.PKEY      AS id,
-        sp.TIME      AS datum_2,
-        sp.KESIMPULAN,
-        sp.INDIKASI,
-        sp.RELAY,
-        sp.PHASE
-      FROM sync_prtspl sp
-      WHERE sp.POINT_KEY = ? AND sp.PKEY != ?
-      ORDER BY sp.PKEY DESC
-      LIMIT 20
-    `, [alarm.POINT_KEY, id]);
+    // Riwayat: event lain pada POINTPID yang sama (fallback ke POINT_KEY)
+    // Gunakan POINTPID jika alarm punya POINTPID, supaya riwayat akurat per titik SCADA
+    const usePointpid = alarm.POINTPID && alarm.POINTPID.trim() !== '';
+    const [riwayat] = await db.query(
+      usePointpid
+        ? `SELECT sp.PKEY AS id, sp.TIME AS datum_2, sp.KESIMPULAN,
+                  sp.INDIKASI, sp.RELAY, sp.PHASE
+           FROM sync_prtspl sp
+           WHERE sp.POINTPID = ? AND sp.PKEY != ?
+           ORDER BY sp.PKEY DESC LIMIT 20`
+        : `SELECT sp.PKEY AS id, sp.TIME AS datum_2, sp.KESIMPULAN,
+                  sp.INDIKASI, sp.RELAY, sp.PHASE
+           FROM sync_prtspl sp
+           WHERE sp.POINT_KEY = ? AND sp.PKEY != ?
+           ORDER BY sp.PKEY DESC LIMIT 20`,
+      usePointpid ? [alarm.POINTPID, id] : [alarm.POINT_KEY, id]
+    );
 
     res.json({ alarm, riwayat });
   } catch (err) {

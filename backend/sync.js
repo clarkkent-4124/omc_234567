@@ -30,6 +30,26 @@ const up3Cache = new Map();
 // Keyword yang relevan — hanya event ini yang diproses
 const RELEVANT_KEYWORDS = ['pickup', 'rnr', 'tcs'];
 
+// ── Helper: deteksi jenis relay dari teks ────────────────────────
+// "over current" / "overcurrent" → OCR
+// "ground"                       → GFR
+function extractRelay(text) {
+  const t = text.toLowerCase();
+  if (t.includes('over current') || t.includes('overcurrent')) return 'OCR';
+  if (t.includes('ground')) return 'GFR';
+  return null;
+}
+
+// ── Helper: deteksi phase dari teks ─────────────────────────────
+// Cari kata "fasa" / "phasa" / "phase", ambil huruf berikutnya
+// A/B/C/R/S/T → huruf tersebut  |  ada kata fasa tapi bukan A-C/R-T → N
+function extractPhase(text) {
+  const match = text.match(/(?:fasa|phasa|phase)\s+([a-zA-Z])/i);
+  if (!match) return null;
+  const letter = match[1].toUpperCase();
+  return ['A','B','C','R','S','T'].includes(letter) ? letter : 'N';
+}
+
 function parseDesc(desc) {
   if (!desc || typeof desc !== 'string') return null;
 
@@ -81,12 +101,15 @@ function parseDesc(desc) {
         // Fallback: tidak ada " - ", ambil seluruh middle
         out.SUMBER_FEEDER = middle || null;
       }
+      // Relay & phase dari full DESC
+      out.RELAY = extractRelay(cleaned);
+      out.PHASE = extractPhase(cleaned);
     } else {
       // Format titik: GI-{gi}.{relay}.{indikasi}.{relay}.{phase}.{kesimpulan}
       out.SUMBER_FEEDER = parts[1] || null;
       out.INDIKASI      = parts[2] || null;
-      out.RELAY         = parts[3] || null;
-      out.PHASE         = parts[4] || null;
+      out.RELAY         = parts[3] || extractRelay(cleaned);
+      out.PHASE         = parts[4] || extractPhase(cleaned);
     }
 
     out.POINT_KEY = [out.GI, out.SUMBER_FEEDER, out.RELAY, out.PHASE]
@@ -120,12 +143,15 @@ function parseDesc(desc) {
         // Fallback: tidak ada underscore, pakai seluruh middle
         out.INDIKASI = middle || null;
       }
+      // Relay & phase dari full DESC
+      out.RELAY = extractRelay(cleaned);
+      out.PHASE = extractPhase(cleaned);
     } else {
       // Format titik: Feeder_{feeder}.{keypoint}.{indikasi}.{relay}.{phase}.{kesimpulan}
       out.KEYPOINT = parts[1] || null;
       out.INDIKASI = parts[2] || null;
-      out.RELAY    = parts[3] || null;
-      out.PHASE    = parts[4] || null;
+      out.RELAY    = parts[3] || extractRelay(cleaned);
+      out.PHASE    = parts[4] || extractPhase(cleaned);
     }
 
     out.POINT_KEY = [out.FEEDER_MURNI, out.KEYPOINT, out.RELAY, out.PHASE]
@@ -235,7 +261,7 @@ async function runJob() {
         .input('lastSeq', cursorSeq)
         .query(`
           SELECT TOP ${BATCH_SIZE}
-            SEQUENCE, PKEY, TIME, [DESC]
+            SEQUENCE, PKEY, TIME, [DESC], POINTPID
           FROM prtspl
           WHERE SEQUENCE > @lastSeq
             AND [DESC] NOT LIKE '%manual%'
@@ -261,19 +287,24 @@ async function runJob() {
         const id_up3 = await lookupUp3(parsed);
 
         try {
+          // Normalise POINTPID: null-ish string → null
+          const pointpid = (row.POINTPID != null && String(row.POINTPID).trim() !== '')
+            ? String(row.POINTPID).trim()
+            : null;
+
           await db.query(
             `INSERT IGNORE INTO sync_prtspl
                (SEQUENCE, PKEY, TIME, \`DESC\`,
                 JENIS, GI, SUMBER_FEEDER, FEEDER_MURNI, KEYPOINT,
                 INDIKASI, RELAY, PHASE,
-                KESIMPULAN, POINT_KEY, ID_UP3)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                KESIMPULAN, POINT_KEY, POINTPID, ID_UP3)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               row.SEQUENCE, row.PKEY, row.TIME, row.DESC,
               parsed.JENIS, parsed.GI, parsed.SUMBER_FEEDER,
               parsed.FEEDER_MURNI, parsed.KEYPOINT,
               parsed.INDIKASI, parsed.RELAY, parsed.PHASE,
-              parsed.KESIMPULAN, parsed.POINT_KEY, id_up3,
+              parsed.KESIMPULAN, parsed.POINT_KEY, pointpid, id_up3,
             ]
           );
           synced++;
