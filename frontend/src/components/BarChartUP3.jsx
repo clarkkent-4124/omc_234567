@@ -50,9 +50,7 @@ export default function BarChartUP3({ dari, sampai, filterKey, applying, onFetch
       .finally(() => { setLoading(false); onFetchDone?.(); });
   }, [dari, sampai, filterKey]);
 
-  const dateLabel = dari === sampai
-    ? formatDateLabel(dari)
-    : `${formatDateLabel(dari)} – ${formatDateLabel(sampai)}`;
+  const dateLabel = new Date(dari + 'T12:00:00').toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
 
   const hasData = data.some(r => r['PICKUP GI'] > 0 || r['PICKUP KP'] > 0 || r['RNR'] > 0 || r['TCS'] > 0);
   const barHeight = Math.max(180, data.length * 36);

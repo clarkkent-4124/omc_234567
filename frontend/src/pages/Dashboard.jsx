@@ -1,67 +1,29 @@
-import { useState, useRef, useCallback } from 'react';
 import SummaryCards from '../components/SummaryCards';
-import FilterCard from '../components/FilterCard';
 import DonutChart from '../components/DonutChart';
 import BarChart24h from '../components/BarChart24h';
 import BarChartUP3 from '../components/BarChartUP3';
 import GIList from '../components/GIList';
 
-// Default: bulan penuh (1 s/d akhir bulan ini)
-// Pakai format lokal — toISOString() bisa mundur 1 hari di timezone UTC+7
 function localDate(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
-const _now        = new Date();
-const defaultFrom = localDate(new Date(_now.getFullYear(), _now.getMonth(), 1));
-const defaultTo   = localDate(new Date(_now.getFullYear(), _now.getMonth() + 1, 0));
+const _now  = new Date();
+const DARI  = localDate(new Date(_now.getFullYear(), _now.getMonth(), 1));
+const SAMPAI = localDate(new Date(_now.getFullYear(), _now.getMonth() + 1, 0));
 
-const FETCH_COUNT = 3; // DonutChart + BarChartUP3/BarChart24h + GIList
+const filterProps = { dari: DARI, sampai: SAMPAI };
 
 export default function Dashboard({ onCardClick, onGIClick, isDesktop = false }) {
-  const [dari, setDari]         = useState(defaultFrom);
-  const [sampai, setSampai]     = useState(defaultTo);
-  const [appliedDari, setAppliedDari]   = useState(defaultFrom);
-  const [appliedSampai, setAppliedSampai] = useState(defaultTo);
-  const [applying, setApplying] = useState(false);
-  const [filterKey, setFilterKey] = useState(0); // naik setiap klik Terapkan → paksa useEffect anak
-
-  const doneCount  = useRef(0);
-  const startTime  = useRef(0);
-  const MIN_DELAY  = 1000; // ms
-
-  function handleApply() {
-    doneCount.current = 0;
-    startTime.current = Date.now();
-    setApplying(true);
-    setAppliedDari(dari);
-    setAppliedSampai(sampai);
-    setFilterKey(k => k + 1);
-  }
-
-  const onFetchDone = useCallback(() => {
-    doneCount.current += 1;
-    if (doneCount.current >= FETCH_COUNT) {
-      const elapsed   = Date.now() - startTime.current;
-      const remaining = Math.max(0, MIN_DELAY - elapsed);
-      setTimeout(() => setApplying(false), remaining);
-    }
-  }, []);
-
-  const filterProps = { dari: appliedDari, sampai: appliedSampai, filterKey, applying, onFetchDone };
-
   if (isDesktop) {
     return (
       <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        {/* Baris 1: Summary cards (kiri) + Filter (kanan) */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1fr', gap: 20, alignItems: 'stretch' }}>
-          <SummaryCards onCardClick={onCardClick} isDesktop />
-          <FilterCard dari={dari} sampai={sampai} setDari={setDari} setSampai={setSampai} onApply={handleApply} applying={applying} />
-        </div>
+        {/* Baris 1: Summary cards full width */}
+        <SummaryCards onCardClick={onCardClick} isDesktop />
 
         {/* Baris 2: Donut (kiri) + UP3 chart (kanan) */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: 20, alignItems: 'stretch' }}>
-          <DonutChart   {...filterProps} />
-          <BarChartUP3  {...filterProps} />
+          <DonutChart  {...filterProps} />
+          <BarChartUP3 {...filterProps} />
         </div>
 
         {/* Baris 3: GI List full width */}
@@ -73,7 +35,6 @@ export default function Dashboard({ onCardClick, onGIClick, isDesktop = false })
   return (
     <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <SummaryCards onCardClick={onCardClick} />
-      <FilterCard dari={dari} sampai={sampai} setDari={setDari} setSampai={setSampai} onApply={handleApply} applying={applying} />
       <DonutChart  {...filterProps} />
       <BarChart24h {...filterProps} />
       <GIList      {...filterProps} onGIClick={onGIClick} />

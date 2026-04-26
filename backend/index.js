@@ -670,54 +670,25 @@ app.get('/api/sync/status', (req, res) => {
 
 // ── GET /api/db-status ───────────────────────────────────────────
 app.get('/api/db-status', async (req, res) => {
-  require('dotenv').config({ override: true });
-
-  const mysql2   = require('mysql2/promise');
-  const mssqlLib = require('mssql');
+  const { mysql: mysqlPool, getMssql } = require('./db');
 
   let mysqlResult = { ok: false, latency: null, error: null };
-  let mysqlConn;
   try {
     const t0 = Date.now();
-    mysqlConn = await mysql2.createConnection({
-      host:           process.env.MYSQL_HOST || '127.0.0.1',
-      port:           Number(process.env.MYSQL_PORT) || 3306,
-      user:           process.env.MYSQL_USER,
-      password:       process.env.MYSQL_PASS,
-      database:       process.env.MYSQL_NAME,
-      connectTimeout: 5000,
-    });
-    await mysqlConn.query('SELECT 1');
+    await mysqlPool.query('SELECT 1');
     mysqlResult = { ok: true, latency: Date.now() - t0, error: null };
   } catch (err) {
     mysqlResult.error = err.message;
-  } finally {
-    if (mysqlConn) mysqlConn.destroy();
   }
 
   let mssqlResult = { ok: false, latency: null, error: null };
-  let mssqlConn;
   try {
-    const t0 = Date.now();
-    mssqlConn = await mssqlLib.connect({
-      server:   process.env.MSSQL_HOST || '127.0.0.1',
-      port:     Number(process.env.MSSQL_PORT) || 1433,
-      user:     process.env.MSSQL_USER,
-      password: process.env.MSSQL_PASS,
-      database: process.env.MSSQL_NAME,
-      options: {
-        instanceName:           process.env.MSSQL_INSTANCE || undefined,
-        encrypt:                false,
-        trustServerCertificate: true,
-        connectTimeout:         5000,
-      },
-    });
-    await mssqlConn.request().query('SELECT 1 AS ok');
+    const t0   = Date.now();
+    const pool = await getMssql();
+    await pool.request().query('SELECT 1 AS ok');
     mssqlResult = { ok: true, latency: Date.now() - t0, error: null };
   } catch (err) {
     mssqlResult.error = err.message;
-  } finally {
-    if (mssqlConn) await mssqlConn.close().catch(() => {});
   }
 
   res.json({ mysql: mysqlResult, mssql: mssqlResult, checkedAt: new Date() });

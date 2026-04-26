@@ -32,9 +32,7 @@ export default function GIList({ dari, sampai, filterKey, applying, onFetchDone,
       .finally(() => { setLoading(false); onFetchDone?.(); });
   }, [dari, sampai, filterKey, activeType]);
 
-  const dateLabel = dari === sampai
-    ? formatDateLabel(dari)
-    : `${formatDateLabel(dari)} – ${formatDateLabel(sampai)}`;
+  const dateLabel = new Date(dari + 'T12:00:00').toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
 
   return (
     <div>

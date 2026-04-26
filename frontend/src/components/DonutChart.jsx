@@ -48,9 +48,7 @@ export default function DonutChart({ dari, sampai, filterKey, applying, onFetchD
       .finally(() => { setLoading(false); onFetchDone?.(); });
   }, [dari, sampai, filterKey]);
 
-  const dateLabel = dari === sampai
-    ? formatDateLabel(dari)
-    : `${formatDateLabel(dari)} – ${formatDateLabel(sampai)}`;
+  const dateLabel = new Date(dari + 'T12:00:00').toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
 
   const CustomLabel = ({ cx, cy }) => (
     <>
