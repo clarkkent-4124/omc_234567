@@ -1,0 +1,18 @@
+# ignore semua env file
+.env
+.env.*
+
+# spesifik path (opsional, tapi aman)
+backend/.env
+frontend/.env
+
+# node modules
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+
+# log
+*.log
+
+# build frontend
+frontend/dist/

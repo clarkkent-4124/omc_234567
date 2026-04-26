@@ -1066,44 +1066,6 @@ function PengaturanTab({ user, isDesktop = false }) {
             </div>
           )}
 
-          {/* Auto-Cleanup toggle row */}
-          <div style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, background: 'var(--bg)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 22, height: 22, borderRadius: 6, background: cleanupEnabled ? 'rgba(234,179,8,0.2)' : 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background 0.3s' }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={cleanupEnabled ? '#eab308' : 'var(--dim)'} strokeWidth="2.5">
-                  <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4h6v2" />
-                </svg>
-              </div>
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', lineHeight: 1.2 }}>Auto-Cleanup Recovery</div>
-                <div style={{ fontSize: 10, color: 'var(--dim)', marginTop: 1 }}>
-                  {cleanupEnabled
-                    ? 'Hapus otomatis alarm yang sudah recovery (Dis)'
-                    : 'Alarm tidak dihapus otomatis — manual ack saja'}
-                </div>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={handleToggleCleanup}
-              disabled={togglingClean || loading}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                padding: '5px 10px', borderRadius: 20, cursor: togglingClean ? 'wait' : 'pointer',
-                fontFamily: 'IBM Plex Sans, sans-serif', fontSize: 11, fontWeight: 700,
-                border: `1px solid ${cleanupEnabled ? 'rgba(234,179,8,0.4)' : 'rgba(100,116,139,0.4)'}`,
-                background: cleanupEnabled ? 'rgba(234,179,8,0.1)' : 'rgba(100,116,139,0.1)',
-                color: cleanupEnabled ? '#ca8a04' : '#64748b',
-                transition: 'all 0.2s', flexShrink: 0,
-                opacity: togglingClean || loading ? 0.6 : 1,
-              }}
-            >
-              <div style={{ width: 24, height: 14, borderRadius: 7, position: 'relative', background: cleanupEnabled ? '#eab308' : '#64748b', transition: 'background 0.2s', flexShrink: 0 }}>
-                <div style={{ position: 'absolute', top: 1, left: cleanupEnabled ? 11 : 1, width: 12, height: 12, borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
-              </div>
-              {togglingClean ? '...' : cleanupEnabled ? 'ON' : 'OFF'}
-            </button>
-          </div>
         </div>
 
         {/* SLA */}

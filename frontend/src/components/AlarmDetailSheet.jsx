@@ -116,8 +116,9 @@ export default function AlarmDetailSheet({ alarm: initialAlarm, onClose, user, o
         kesimpulan,
         keterangan: keterangan.trim(),
       });
-      onAck?.();
       onClose();
+      // Refresh list setelah modal tutup supaya DELETE sudah committed
+      setTimeout(() => onAck?.(), 300);
     } catch (err) {
       setSaveError(err.message || 'Gagal menyimpan validasi.');
     } finally {

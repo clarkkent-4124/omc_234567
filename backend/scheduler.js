@@ -60,6 +60,8 @@ async function runJob() {
       if (trigger_duration_enabled) {
         // Mode GLITCH FILTER: latest event per POINTPID (atau POINT_KEY) harus 'App'
         // DAN sudah bertahan > trigger_duration detik
+        // Tambahan: skip event yang sudah ada di alarm_ack (sudah divalidasi operator)
+        // sehingga setelah ack+hapus alarm_active, tidak langsung re-trigger
         [toTrigger] = await db.query(`
           SELECT sp.PKEY, sp.TIME AS alarm_start, sp.POINT_KEY, sp.POINTPID,
             COALESCE(NULLIF(TRIM(sp.POINTPID),''), sp.POINT_KEY) AS eff_key
@@ -73,14 +75,13 @@ async function runJob() {
             GROUP BY COALESCE(NULLIF(TRIM(POINTPID),''), POINT_KEY)
           ) latest ON COALESCE(NULLIF(TRIM(sp.POINTPID),''), sp.POINT_KEY) = latest.eff_key
             AND sp.PKEY = latest.max_pkey
-          LEFT JOIN alarm_active aa ON (
-            (sp.POINTPID IS NOT NULL AND sp.POINTPID != '' AND aa.pointpid = sp.POINTPID)
-            OR (COALESCE(sp.POINTPID,'') = '' AND aa.point_key = sp.POINT_KEY)
-          )
+          LEFT JOIN alarm_active aa  ON aa.pkey  = sp.PKEY
+          LEFT JOIN alarm_ack    aa_k ON aa_k.pkey = sp.PKEY
           WHERE sp.KESIMPULAN = 'App'
             AND sp.JENIS IN (${ALL_JENIS})
             AND TIMESTAMPDIFF(SECOND, sp.TIME, NOW()) > ?
-            AND aa.id IS NULL
+            AND aa.id    IS NULL
+            AND aa_k.pkey IS NULL
         `, [trigger_duration]);
       } else {
         // Mode LANGSUNG: trigger setiap ada App terbaru per effective key
@@ -98,12 +99,11 @@ async function runJob() {
             GROUP BY COALESCE(NULLIF(TRIM(POINTPID),''), POINT_KEY)
           ) latest_app ON COALESCE(NULLIF(TRIM(sp.POINTPID),''), sp.POINT_KEY) = latest_app.eff_key
             AND sp.PKEY = latest_app.max_app_pkey
-          LEFT JOIN alarm_active aa ON (
-            (sp.POINTPID IS NOT NULL AND sp.POINTPID != '' AND aa.pointpid = sp.POINTPID)
-            OR (COALESCE(sp.POINTPID,'') = '' AND aa.point_key = sp.POINT_KEY)
-          )
+          LEFT JOIN alarm_active aa  ON aa.pkey  = sp.PKEY
+          LEFT JOIN alarm_ack    aa_k ON aa_k.pkey = sp.PKEY
           WHERE sp.JENIS IN (${ALL_JENIS})
-            AND aa.id IS NULL
+            AND aa.id    IS NULL
+            AND aa_k.pkey IS NULL
         `);
       }
 
