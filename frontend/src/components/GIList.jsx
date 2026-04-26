@@ -48,7 +48,7 @@ export default function GIList({ dari, sampai, filterKey, applying, onFetchDone,
     <div>
       <div style={{ marginBottom: 10 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, textTransform: 'uppercase' }}>
-          Alarm per GI:{' '}
+          Rangkuman Alarm:{' '}
           <span style={{ color: 'var(--accent)', textTransform: 'none', letterSpacing: 0 }}>{dateLabel}</span>
         </div>
       </div>

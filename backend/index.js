@@ -94,25 +94,30 @@ app.get('/api/ping', async (req, res) => {
 // ════════════════════════════════════════════════════════════════
 
 // ── GET /api/dashboard/summary ───────────────────────────────────
-// Hitung alarm aktif saat ini dari alarm_active
+// Hitung alarm valid bulan ini dari sync_prtspl + alarm_ack
 app.get('/api/dashboard/summary', async (req, res) => {
   try {
+    const now = new Date();
+    const tahun = now.getFullYear();
+    const bulan = now.getMonth() + 1;
+
     const [rows] = await db.query(`
       SELECT sp.JENIS AS jenis, COUNT(*) AS cnt
-      FROM alarm_active aa
-      JOIN sync_prtspl sp ON sp.PKEY = aa.pkey
-      WHERE sp.JENIS IN ('PICKUP GI', 'PICKUP KP', 'RNR', 'TCS')
+      FROM sync_prtspl sp
+      INNER JOIN alarm_ack aa ON aa.pkey = sp.PKEY AND aa.kesimpulan = 'valid'
+      WHERE sp.KESIMPULAN = 'App'
+        AND sp.JENIS IN ('PICKUP GI', 'PICKUP KP', 'RNR', 'TCS')
+        AND YEAR(sp.TIME) = ? AND MONTH(sp.TIME) = ?
       GROUP BY sp.JENIS
-    `);
+    `, [tahun, bulan]);
 
-    const result = { pickup_gi: 0, pickup_kp: 0, rnr: 0, tcs: 0, total: 0 };
+    const result = { pickup_gi: 0, pickup_kp: 0, rnr: 0, tcs: 0 };
     rows.forEach(r => {
       if (r.jenis === 'PICKUP GI') result.pickup_gi = r.cnt;
       if (r.jenis === 'PICKUP KP') result.pickup_kp = r.cnt;
       if (r.jenis === 'RNR')       result.rnr       = r.cnt;
       if (r.jenis === 'TCS')       result.tcs       = r.cnt;
     });
-    result.total = result.pickup_gi + result.pickup_kp + result.rnr + result.tcs;
 
     res.json(result);
   } catch (err) {

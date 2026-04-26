@@ -2,15 +2,14 @@ import { useEffect, useState } from 'react';
 import { api } from '../services/api';
 
 const CARDS = [
-  { key: 'pickup_gi', label: 'PICKUP GI', colorVar: 'var(--pickup)', bgVar: 'var(--pickup-bg)', borderVar: 'var(--pickup-border)', sub: 'alarm aktif' },
-  { key: 'pickup_kp', label: 'PICKUP KP', colorVar: 'var(--rnr)',    bgVar: 'var(--rnr-bg)',    borderVar: 'var(--rnr-border)',    sub: 'alarm aktif' },
-  { key: 'rnr',       label: 'RNR',       colorVar: 'var(--ews)',    bgVar: 'var(--ews-bg)',    borderVar: 'var(--ews-border)',    sub: 'alarm aktif' },
-  { key: 'tcs',       label: 'TCS',       colorVar: 'var(--tcs)',    bgVar: 'var(--tcs-bg)',    borderVar: 'var(--tcs-border)',    sub: 'alarm aktif' },
-  { key: 'total',     label: 'TOTAL',     colorVar: 'var(--accent)', bgVar: 'var(--accent-bg)', borderVar: 'var(--accent-border)', sub: 'alarm aktif saat ini' },
+  { key: 'pickup_gi', label: 'PICKUP GI', colorVar: 'var(--pickup)', bgVar: 'var(--pickup-bg)', borderVar: 'var(--pickup-border)', sub: 'alarm valid bulan ini' },
+  { key: 'pickup_kp', label: 'PICKUP KP', colorVar: 'var(--rnr)',    bgVar: 'var(--rnr-bg)',    borderVar: 'var(--rnr-border)',    sub: 'alarm valid bulan ini' },
+  { key: 'rnr',       label: 'RNR',       colorVar: 'var(--ews)',    bgVar: 'var(--ews-bg)',    borderVar: 'var(--ews-border)',    sub: 'alarm valid bulan ini' },
+  { key: 'tcs',       label: 'TCS',       colorVar: 'var(--tcs)',    bgVar: 'var(--tcs-bg)',    borderVar: 'var(--tcs-border)',    sub: 'alarm valid bulan ini' },
 ];
 
 export default function SummaryCards({ onCardClick, isDesktop = false }) {
-  const [counts, setCounts] = useState({ pickup_gi: '-', pickup_kp: '-', total: '-' });
+  const [counts, setCounts] = useState({ pickup_gi: '-', pickup_kp: '-', rnr: '-', tcs: '-' });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,9 +30,9 @@ export default function SummaryCards({ onCardClick, isDesktop = false }) {
   return (
     <div>
       <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, margin: '0 0 10px', textTransform: 'uppercase' }}>
-        Ringkasan Alarm Aktif
+        Ringkasan Alarm
       </p>
-      <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1fr 1fr 1fr 1fr 1fr' : '1fr 1fr', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1fr 1fr 1fr 1fr' : '1fr 1fr', gap: 10 }}>
         {CARDS.map((card, idx) => (
           <button
             key={card.key}
@@ -48,8 +47,7 @@ export default function SummaryCards({ onCardClick, isDesktop = false }) {
               transition: 'transform 0.1s',
               position: 'relative',
               overflow: 'hidden',
-              // card TOTAL full-width hanya di mobile
-              gridColumn: (!isDesktop && idx === 4) ? '1 / -1' : undefined,
+              gridColumn: undefined,
             }}
             onMouseDown={e => e.currentTarget.style.transform = 'scale(0.97)'}
             onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}

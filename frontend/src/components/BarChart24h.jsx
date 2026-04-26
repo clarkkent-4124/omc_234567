@@ -41,9 +41,7 @@ export default function BarChart24h({ dari, sampai, filterKey, applying, onFetch
       .finally(() => { setLoading(false); onFetchDone?.(); });
   }, [dari, sampai, filterKey]);
 
-  const dateLabel = dari === sampai
-    ? formatDateLabel(dari)
-    : `${formatDateLabel(dari)} – ${formatDateLabel(sampai)}`;
+  const dateLabel = new Date(dari + 'T12:00:00').toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
 
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '16px 14px' }}>
