@@ -120,23 +120,26 @@ function SkeletonRows({ n = 5 }) {
 // TAB 1 — Kalender Pickup
 // ════════════════════════════════════════════════════════════════
 function TabKalender({ isDesktop = false }) {
-  const [bulan,    setBulan]    = useState(defaultBulan);
-  const [jenis,    setJenis]    = useState('PICKUP GI');
-  const [gi,       setGi]       = useState('');
-  const [giOptions, setGiOptions] = useState([]);
-  const [rows,     setRows]     = useState([]);
-  const [loading,  setLoading]  = useState(false);
-  const [applied,  setApplied]  = useState({ bulan: defaultBulan(), jenis: 'PICKUP GI', gi: '' });
+  const [bulan,      setBulan]      = useState(defaultBulan);
+  const [jenis,      setJenis]      = useState('PICKUP GI');
+  const [gi,         setGi]         = useState('');
+  const [up3,        setUp3]        = useState('');
+  const [giOptions,  setGiOptions]  = useState([]);
+  const [up3Options, setUp3Options] = useState([]);
+  const [rows,       setRows]       = useState([]);
+  const [loading,    setLoading]    = useState(false);
+  const [applied,    setApplied]    = useState({ bulan: defaultBulan(), jenis: 'PICKUP GI', gi: '', up3: '' });
 
-  // Load GI options once
+  // Load ref options once
   useEffect(() => {
     api.getRefGI().then(arr => setGiOptions(Array.isArray(arr) ? arr : [])).catch(() => {});
+    api.getRefUp3().then(arr => setUp3Options(Array.isArray(arr) ? arr : [])).catch(() => {});
   }, []);
 
   // Fetch & pivot on apply
   useEffect(() => {
     setLoading(true);
-    api.getLaporanKalender({ bulan: applied.bulan, jenis: applied.jenis, gi: applied.gi })
+    api.getLaporanKalender({ bulan: applied.bulan, jenis: applied.jenis, gi: applied.gi, up3: applied.up3 })
       .then(res => {
         const matrix = {};
         (res.data || []).forEach(r => {
@@ -180,26 +183,33 @@ function TabKalender({ isDesktop = false }) {
 
         {isDesktop ? (
           /* ── Desktop: 1 row ── */
-          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
-            <div style={{ width: 150 }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+            <div style={{ width: 140 }}>
               <label style={labelStyle}>Bulan</label>
               <input type="month" value={bulan} onChange={e => setBulan(e.target.value)} style={inputStyle} />
             </div>
-            <div style={{ width: 140 }}>
+            <div style={{ width: 130 }}>
               <label style={labelStyle}>Jenis</label>
               <select value={jenis} onChange={e => setJenis(e.target.value)} style={inputStyle}>
                 {JENIS_LIST.map(j => <option key={j} value={j}>{j}</option>)}
               </select>
             </div>
-            <div style={{ width: 200 }}>
+            <div style={{ width: 180 }}>
+              <label style={labelStyle}>UP3</label>
+              <select value={up3} onChange={e => setUp3(e.target.value)} style={inputStyle}>
+                <option value="">Semua UP3</option>
+                {up3Options.map(u => <option key={u.APJ_ID} value={u.APJ_ID}>{u.APJ_NAMA}</option>)}
+              </select>
+            </div>
+            <div style={{ width: 180 }}>
               <label style={labelStyle}>GI</label>
               <select value={gi} onChange={e => setGi(e.target.value)} style={inputStyle}>
                 <option value="">Semua GI</option>
                 {giOptions.map(g => <option key={g} value={g}>{g}</option>)}
               </select>
             </div>
-            <div style={{ width: 130 }}>
-              <ApplyBtn onClick={() => setApplied({ bulan, jenis, gi })} />
+            <div style={{ width: 120 }}>
+              <ApplyBtn onClick={() => setApplied({ bulan, jenis, gi, up3 })} />
             </div>
           </div>
         ) : (
@@ -217,14 +227,23 @@ function TabKalender({ isDesktop = false }) {
                 </select>
               </div>
             </div>
-            <div style={{ marginBottom: 14 }}>
-              <label style={labelStyle}>GI</label>
-              <select value={gi} onChange={e => setGi(e.target.value)} style={inputStyle}>
-                <option value="">Semua GI</option>
-                {giOptions.map(g => <option key={g} value={g}>{g}</option>)}
-              </select>
+            <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+              <div style={{ flex: 1 }}>
+                <label style={labelStyle}>UP3</label>
+                <select value={up3} onChange={e => setUp3(e.target.value)} style={inputStyle}>
+                  <option value="">Semua UP3</option>
+                  {up3Options.map(u => <option key={u.APJ_ID} value={u.APJ_ID}>{u.APJ_NAMA}</option>)}
+                </select>
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={labelStyle}>GI</label>
+                <select value={gi} onChange={e => setGi(e.target.value)} style={inputStyle}>
+                  <option value="">Semua GI</option>
+                  {giOptions.map(g => <option key={g} value={g}>{g}</option>)}
+                </select>
+              </div>
             </div>
-            <ApplyBtn onClick={() => setApplied({ bulan, jenis, gi })} />
+            <ApplyBtn onClick={() => setApplied({ bulan, jenis, gi, up3 })} />
           </>
         )}
       </div>
@@ -331,15 +350,24 @@ function TabKalender({ isDesktop = false }) {
 // TAB 2 — Laporan Tiap Peralatan (per UP3)
 // ════════════════════════════════════════════════════════════════
 function TabPeralatan({ isDesktop = false }) {
-  const [bulan,   setBulan]   = useState(defaultBulan);
-  const [jenis,   setJenis]   = useState('PICKUP GI');
-  const [rows,    setRows]    = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [applied, setApplied] = useState({ bulan: defaultBulan(), jenis: 'PICKUP GI' });
+  const [bulan,      setBulan]      = useState(defaultBulan);
+  const [jenis,      setJenis]      = useState('PICKUP GI');
+  const [gi,         setGi]         = useState('');
+  const [up3,        setUp3]        = useState('');
+  const [giOptions,  setGiOptions]  = useState([]);
+  const [up3Options, setUp3Options] = useState([]);
+  const [rows,       setRows]       = useState([]);
+  const [loading,    setLoading]    = useState(false);
+  const [applied,    setApplied]    = useState({ bulan: defaultBulan(), jenis: 'PICKUP GI', gi: '', up3: '' });
+
+  useEffect(() => {
+    api.getRefGI().then(arr => setGiOptions(Array.isArray(arr) ? arr : [])).catch(() => {});
+    api.getRefUp3().then(arr => setUp3Options(Array.isArray(arr) ? arr : [])).catch(() => {});
+  }, []);
 
   useEffect(() => {
     setLoading(true);
-    api.getLaporanPeralatan({ bulan: applied.bulan, jenis: applied.jenis })
+    api.getLaporanPeralatan({ bulan: applied.bulan, jenis: applied.jenis, gi: applied.gi, up3: applied.up3 })
       .then(res => setRows(res.data || []))
       .catch(() => setRows([]))
       .finally(() => setLoading(false));
@@ -371,25 +399,39 @@ function TabPeralatan({ isDesktop = false }) {
 
         {isDesktop ? (
           /* ── Desktop: 1 row ── */
-          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
-            <div style={{ width: 150 }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+            <div style={{ width: 140 }}>
               <label style={labelStyle}>Bulan</label>
               <input type="month" value={bulan} onChange={e => setBulan(e.target.value)} style={inputStyle} />
             </div>
-            <div style={{ width: 140 }}>
+            <div style={{ width: 130 }}>
               <label style={labelStyle}>Jenis</label>
               <select value={jenis} onChange={e => setJenis(e.target.value)} style={inputStyle}>
                 {JENIS_LIST.map(j => <option key={j} value={j}>{j}</option>)}
               </select>
             </div>
-            <div style={{ width: 130 }}>
-              <ApplyBtn onClick={() => setApplied({ bulan, jenis })} />
+            <div style={{ width: 180 }}>
+              <label style={labelStyle}>UP3</label>
+              <select value={up3} onChange={e => setUp3(e.target.value)} style={inputStyle}>
+                <option value="">Semua UP3</option>
+                {up3Options.map(u => <option key={u.APJ_ID} value={u.APJ_ID}>{u.APJ_NAMA}</option>)}
+              </select>
+            </div>
+            <div style={{ width: 180 }}>
+              <label style={labelStyle}>GI</label>
+              <select value={gi} onChange={e => setGi(e.target.value)} style={inputStyle}>
+                <option value="">Semua GI</option>
+                {giOptions.map(g => <option key={g} value={g}>{g}</option>)}
+              </select>
+            </div>
+            <div style={{ width: 120 }}>
+              <ApplyBtn onClick={() => setApplied({ bulan, jenis, gi, up3 })} />
             </div>
           </div>
         ) : (
           /* ── Mobile: stacked ── */
           <>
-            <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+            <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
               <div style={{ flex: 1 }}>
                 <label style={labelStyle}>Bulan</label>
                 <input type="month" value={bulan} onChange={e => setBulan(e.target.value)} style={inputStyle} />
@@ -401,7 +443,23 @@ function TabPeralatan({ isDesktop = false }) {
                 </select>
               </div>
             </div>
-            <ApplyBtn onClick={() => setApplied({ bulan, jenis })} />
+            <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+              <div style={{ flex: 1 }}>
+                <label style={labelStyle}>UP3</label>
+                <select value={up3} onChange={e => setUp3(e.target.value)} style={inputStyle}>
+                  <option value="">Semua UP3</option>
+                  {up3Options.map(u => <option key={u.APJ_ID} value={u.APJ_ID}>{u.APJ_NAMA}</option>)}
+                </select>
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={labelStyle}>GI</label>
+                <select value={gi} onChange={e => setGi(e.target.value)} style={inputStyle}>
+                  <option value="">Semua GI</option>
+                  {giOptions.map(g => <option key={g} value={g}>{g}</option>)}
+                </select>
+              </div>
+            </div>
+            <ApplyBtn onClick={() => setApplied({ bulan, jenis, gi, up3 })} />
           </>
         )}
       </div>

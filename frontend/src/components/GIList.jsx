@@ -4,9 +4,19 @@ import { api } from '../services/api';
 const BADGE = {
   'PICKUP GI': { colorVar: 'var(--pickup)', bgVar: 'var(--pickup-bg)', borderHex: '#ef444433' },
   'PICKUP KP': { colorVar: 'var(--rnr)',    bgVar: 'var(--rnr-bg)',    borderHex: '#3b82f633' },
+  'RNR':       { colorVar: 'var(--ews)',    bgVar: 'var(--ews-bg)',    borderHex: '#f59e0b33' },
+  'TCS':       { colorVar: 'var(--tcs)',    bgVar: 'var(--tcs-bg)',    borderHex: '#a855f733' },
 };
 
-const TYPE_CHIPS = ['Semua', 'PICKUP GI', 'PICKUP KP'];
+const TYPE_CHIPS = ['Semua', 'PICKUP GI', 'PICKUP KP', 'RNR', 'TCS'];
+
+const CHIP_COLOR = {
+  'Semua':     { color: 'var(--accent)',  bg: 'var(--accent-bg)'  },
+  'PICKUP GI': { color: 'var(--pickup)',  bg: 'var(--pickup-bg)'  },
+  'PICKUP KP': { color: 'var(--rnr)',     bg: 'var(--rnr-bg)'     },
+  'RNR':       { color: 'var(--ews)',     bg: 'var(--ews-bg)'     },
+  'TCS':       { color: 'var(--tcs)',     bg: 'var(--tcs-bg)'     },
+};
 
 function formatDateLabel(isoStr) {
   return new Date(isoStr).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -43,31 +53,6 @@ export default function GIList({ dari, sampai, filterKey, applying, onFetchDone,
         </div>
       </div>
 
-      {/* Filter chips */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
-        {TYPE_CHIPS.map(chip => {
-          const active   = activeType === chip;
-          const colorVar = chip === 'Semua' ? 'var(--accent)' : chip === 'PICKUP GI' ? 'var(--pickup)' : 'var(--rnr)';
-          const bgVar    = chip === 'Semua' ? 'var(--accent-bg)' : chip === 'PICKUP GI' ? 'var(--pickup-bg)' : 'var(--rnr-bg)';
-          return (
-            <button
-              key={chip}
-              onClick={() => setActiveType(chip)}
-              style={{
-                background: active ? bgVar : 'transparent',
-                color: active ? colorVar : 'var(--dim)',
-                border: `1px solid ${active ? colorVar : 'var(--border)'}`,
-                borderRadius: 20, padding: '3px 12px',
-                fontSize: 11, fontWeight: active ? 700 : 400,
-                cursor: 'pointer', fontFamily: 'IBM Plex Sans, sans-serif',
-                transition: 'all 0.15s',
-              }}
-            >
-              {chip}
-            </button>
-          );
-        })}
-      </div>
 
       {/* List */}
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
@@ -112,14 +97,14 @@ export default function GIList({ dari, sampai, filterKey, applying, onFetchDone,
               </div>
             </div>
             <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-              {[['PICKUP GI', gi.pickup_gi], ['PICKUP KP', gi.pickup_kp]].map(([type, count]) =>
+              {[['PICKUP GI', gi.pickup_gi, 'GI'], ['PICKUP KP', gi.pickup_kp, 'KP'], ['RNR', gi.rnr, 'RNR'], ['TCS', gi.tcs, 'TCS']].map(([type, count, label]) =>
                 parseInt(count) > 0 && (
                   <span key={type} style={{
                     background: BADGE[type].bgVar, color: BADGE[type].colorVar,
                     border: `1px solid ${BADGE[type].borderHex}`,
                     borderRadius: 6, padding: '2px 6px', fontSize: 10, fontWeight: 700,
                   }}>
-                    {type.split(' ')[1]}×{count}
+                    {label}×{count}
                   </span>
                 )
               )}

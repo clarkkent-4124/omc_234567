@@ -68,6 +68,11 @@ const NAV_ITEMS = [
       <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
     </svg>
   )},
+  { key: 'tindak', label: 'Tindak Lanjut', icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+    </svg>
+  )},
   { key: 'history', label: 'History', icon: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/>
@@ -249,9 +254,9 @@ export default function App() {
 
   // Halaman yang boleh diakses per role
   const ALLOWED = {
-    guest:    ['dashboard', 'alarm', 'history', 'laporan'],
+    guest:    ['dashboard', 'alarm', 'history', 'laporan', 'tindak'],
     operator: ['dashboard', 'alarm', 'history', 'laporan', 'tindak'],
-    admin:    ['dashboard', 'alarm', 'history', 'laporan', 'admin'],
+    admin:    ['dashboard', 'alarm', 'history', 'laporan', 'tindak', 'admin'],
   };
 
   function canAccess(page, role) {
@@ -294,7 +299,7 @@ export default function App() {
       {activePage === 'alarm'   && <AlarmPage user={user} isDesktop={isDesktop} />}
       {activePage === 'history' && <HistoryPage initialFilter={historyFilter} isDesktop={isDesktop} />}
       {activePage === 'laporan' && <LaporanPage isDesktop={isDesktop} />}
-      {activePage === 'tindak'  && user?.role === 'operator' && <PLACEHOLDER_PAGE />}
+      {activePage === 'tindak'  && <PLACEHOLDER_PAGE />}
       {activePage === 'admin'   && user?.role === 'admin'    && <AdminPage user={user} isDesktop={isDesktop} />}
     </>
   );

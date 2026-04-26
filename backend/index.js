@@ -211,8 +211,15 @@ app.get('/api/dashboard/up3', async (req, res) => {
 // ── GET /api/dashboard/gi-bermasalah ─────────────────────────────
 app.get('/api/dashboard/gi-bermasalah', async (req, res) => {
   try {
-    const { from, to } = req.query;
+    const { from, to, jenis } = req.query;
     const { clause, params } = dateRange(from, to);
+
+    const VALID_JENIS = ['PICKUP GI', 'PICKUP KP', 'RNR', 'TCS'];
+    let jenisClause = `AND sp.JENIS IN ('PICKUP GI', 'PICKUP KP', 'RNR', 'TCS')`;
+    if (jenis && VALID_JENIS.includes(jenis)) {
+      jenisClause = `AND sp.JENIS = ?`;
+      params.push(jenis);
+    }
 
     const [rows] = await db.query(`
       SELECT
@@ -225,7 +232,7 @@ app.get('/api/dashboard/gi-bermasalah', async (req, res) => {
       FROM sync_prtspl sp
       INNER JOIN alarm_ack aa ON aa.pkey = sp.PKEY AND aa.kesimpulan = 'valid'
       WHERE sp.KESIMPULAN = 'App'
-        AND sp.JENIS IN ('PICKUP GI', 'PICKUP KP', 'RNR', 'TCS')
+        ${jenisClause}
         ${clause}
       GROUP BY COALESCE(NULLIF(TRIM(sp.GI),''), NULLIF(TRIM(sp.FEEDER_MURNI),''))
       ORDER BY total DESC
@@ -531,7 +538,7 @@ app.post('/api/alarms/ack', async (req, res) => {
 // ── GET /api/laporan/kalender ─────────────────────────────────────
 app.get('/api/laporan/kalender', async (req, res) => {
   try {
-    const { bulan, jenis, gi } = req.query;
+    const { bulan, jenis, gi, up3 } = req.query;
     const [tahun, bln] = (bulan || '').split('-');
     if (!tahun || !bln) return res.status(400).json({ error: 'Parameter bulan wajib (format: YYYY-MM)' });
 
@@ -545,7 +552,8 @@ app.get('/api/laporan/kalender', async (req, res) => {
     if (jenis && ['PICKUP GI', 'PICKUP KP', 'RNR', 'TCS'].includes(jenis)) {
       where += ' AND sp.JENIS = ?'; params.push(jenis);
     }
-    if (gi) { where += ' AND sp.GI = ?'; params.push(gi); }
+    if (gi)  { where += ' AND sp.GI = ?';      params.push(gi); }
+    if (up3) { where += ' AND sp.ID_UP3 = ?';  params.push(up3); }
 
     const KALENDER_POINT_SQL = `
       CASE
@@ -590,7 +598,7 @@ app.get('/api/laporan/kalender', async (req, res) => {
 // ── GET /api/laporan/peralatan ────────────────────────────────────
 app.get('/api/laporan/peralatan', async (req, res) => {
   try {
-    const { bulan, jenis } = req.query;
+    const { bulan, jenis, gi, up3 } = req.query;
     const [tahun, bln] = (bulan || '').split('-');
     if (!tahun || !bln) return res.status(400).json({ error: 'Parameter bulan wajib (format: YYYY-MM)' });
 
@@ -604,6 +612,8 @@ app.get('/api/laporan/peralatan', async (req, res) => {
     if (jenis && ['PICKUP GI', 'PICKUP KP', 'RNR', 'TCS'].includes(jenis)) {
       where += ' AND sp.JENIS = ?'; params.push(jenis);
     }
+    if (gi)  { where += ' AND sp.GI = ?';      params.push(gi); }
+    if (up3) { where += ' AND sp.ID_UP3 = ?';  params.push(up3); }
 
     const [rows] = await db.query(`
       SELECT
