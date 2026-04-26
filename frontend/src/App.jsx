@@ -239,7 +239,7 @@ export default function App() {
 
   // Poll active alarm count for badge
   const fetchAlarmCount = useCallback(() => {
-    api.getSummary().then(data => setAlarmCount(data.total || 0)).catch(() => {});
+    api.getSummary().then(data => setAlarmCount(data.total_aktif || 0)).catch(() => {});
   }, []);
 
   useEffect(() => {

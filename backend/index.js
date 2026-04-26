@@ -119,6 +119,13 @@ app.get('/api/dashboard/summary', async (req, res) => {
       if (r.jenis === 'TCS')       result.tcs       = r.cnt;
     });
 
+    const [[aktifRow]] = await db.query(`
+      SELECT COUNT(*) AS cnt FROM alarm_active aa
+      JOIN sync_prtspl sp ON sp.PKEY = aa.pkey
+      WHERE sp.JENIS IN ('PICKUP GI', 'PICKUP KP', 'RNR', 'TCS')
+    `);
+    result.total_aktif = aktifRow.cnt;
+
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
