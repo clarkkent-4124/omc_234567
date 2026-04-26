@@ -59,50 +59,50 @@ async function runJob() {
 
       if (trigger_duration_enabled) {
         // Mode GLITCH FILTER: latest event per POINTPID (atau POINT_KEY) harus 'App'
-        // DAN sudah bertahan > trigger_duration detik
-        // Tambahan: skip event yang sudah ada di alarm_ack (sudah divalidasi operator)
-        // sehingga setelah ack+hapus alarm_active, tidak langsung re-trigger
+        // DAN sudah bertahan > trigger_duration detik.
+        // Pakai MAX(SEQUENCE) — SEQUENCE dari SQL Server dijamin monoton naik,
+        // sedangkan PKEY tidak selalu monoton.
         [toTrigger] = await db.query(`
-          SELECT sp.PKEY, sp.TIME AS alarm_start, sp.POINT_KEY, sp.POINTPID,
+          SELECT sp.PKEY, sp.SEQUENCE, sp.TIME AS alarm_start, sp.POINT_KEY, sp.POINTPID,
             COALESCE(NULLIF(TRIM(sp.POINTPID),''), sp.POINT_KEY) AS eff_key
           FROM sync_prtspl sp
           INNER JOIN (
             SELECT
               COALESCE(NULLIF(TRIM(POINTPID),''), POINT_KEY) AS eff_key,
-              MAX(PKEY) AS max_pkey
+              MAX(SEQUENCE) AS max_seq
             FROM sync_prtspl
             WHERE JENIS IN (${ALL_JENIS})
             GROUP BY COALESCE(NULLIF(TRIM(POINTPID),''), POINT_KEY)
           ) latest ON COALESCE(NULLIF(TRIM(sp.POINTPID),''), sp.POINT_KEY) = latest.eff_key
-            AND sp.PKEY = latest.max_pkey
-          LEFT JOIN alarm_active aa  ON aa.pkey  = sp.PKEY
+            AND sp.SEQUENCE = latest.max_seq
+          LEFT JOIN alarm_active aa   ON aa.pkey  = sp.PKEY
           LEFT JOIN alarm_ack    aa_k ON aa_k.pkey = sp.PKEY
           WHERE sp.KESIMPULAN = 'App'
             AND sp.JENIS IN (${ALL_JENIS})
             AND TIMESTAMPDIFF(SECOND, sp.TIME, NOW()) > ?
-            AND aa.id    IS NULL
+            AND aa.id     IS NULL
             AND aa_k.pkey IS NULL
         `, [trigger_duration]);
       } else {
         // Mode LANGSUNG: trigger setiap ada App terbaru per effective key
         [toTrigger] = await db.query(`
-          SELECT sp.PKEY, sp.TIME AS alarm_start, sp.POINT_KEY, sp.POINTPID,
+          SELECT sp.PKEY, sp.SEQUENCE, sp.TIME AS alarm_start, sp.POINT_KEY, sp.POINTPID,
             COALESCE(NULLIF(TRIM(sp.POINTPID),''), sp.POINT_KEY) AS eff_key
           FROM sync_prtspl sp
           INNER JOIN (
             SELECT
               COALESCE(NULLIF(TRIM(POINTPID),''), POINT_KEY) AS eff_key,
-              MAX(PKEY) AS max_app_pkey
+              MAX(SEQUENCE) AS max_seq
             FROM sync_prtspl
             WHERE JENIS IN (${ALL_JENIS})
               AND KESIMPULAN = 'App'
             GROUP BY COALESCE(NULLIF(TRIM(POINTPID),''), POINT_KEY)
           ) latest_app ON COALESCE(NULLIF(TRIM(sp.POINTPID),''), sp.POINT_KEY) = latest_app.eff_key
-            AND sp.PKEY = latest_app.max_app_pkey
-          LEFT JOIN alarm_active aa  ON aa.pkey  = sp.PKEY
+            AND sp.SEQUENCE = latest_app.max_seq
+          LEFT JOIN alarm_active aa   ON aa.pkey  = sp.PKEY
           LEFT JOIN alarm_ack    aa_k ON aa_k.pkey = sp.PKEY
           WHERE sp.JENIS IN (${ALL_JENIS})
-            AND aa.id    IS NULL
+            AND aa.id     IS NULL
             AND aa_k.pkey IS NULL
         `);
       }
@@ -111,9 +111,9 @@ async function runJob() {
         const logKey = alarm.POINTPID || alarm.POINT_KEY;
         try {
           await db.query(
-            `INSERT INTO alarm_active (pkey, point_key, pointpid, triggered_at)
-             VALUES (?, ?, ?, NOW())`,
-            [alarm.PKEY, alarm.POINT_KEY, alarm.POINTPID || null]
+            `INSERT INTO alarm_active (pkey, sequence, point_key, pointpid, triggered_at)
+             VALUES (?, ?, ?, ?, NOW())`,
+            [alarm.PKEY, alarm.SEQUENCE, alarm.POINT_KEY, alarm.POINTPID || null]
           );
           triggered++;
           console.log(`[Scheduler] ✚ Triggered: ${logKey}`);
@@ -128,7 +128,7 @@ async function runJob() {
     // Gunakan POINTPID jika tersedia, fallback ke POINT_KEY
     //
     // ── POINT_KEY-only fallback (simpan sebagai komentar jika perlu kembali): ──
-    // WHERE sp.POINT_KEY = aa.point_key AND sp.PKEY > aa.pkey AND sp.KESIMPULAN='Dis'
+    // WHERE sp.POINT_KEY = aa.point_key AND sp.SEQUENCE > aa.sequence AND sp.KESIMPULAN='Dis'
     let cleanedCount = 0;
 
     if (cleanup_enabled) {
@@ -140,7 +140,7 @@ async function runJob() {
             (aa.pointpid IS NOT NULL AND aa.pointpid != '' AND sp.POINTPID = aa.pointpid)
             OR (COALESCE(aa.pointpid,'') = '' AND sp.POINT_KEY = aa.point_key)
           )
-            AND sp.PKEY       > aa.pkey
+            AND sp.SEQUENCE   > aa.sequence
             AND sp.KESIMPULAN = 'Dis'
             AND sp.JENIS IN ('PICKUP GI', 'PICKUP KP', 'RNR', 'TCS')
         )
